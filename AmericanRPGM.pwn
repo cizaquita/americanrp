@@ -96,6 +96,7 @@ enum PlayerData
 	Float:Chaleco, //80 - Max
 	Nivel, //Inicial - 1
 	Experiencia, //Inicial - 0
+	ExperienciaRe, //Experiencia requerida Nivel+4
 	Faccion, //0 - 1 DESACTIVADO ACTUAL.
 	Rango, //0 - 6 DESACTIVADO ACTUAL.
 	Interior, //VW
@@ -434,6 +435,7 @@ public SpawnRegisterOrLogin(playerid)
 		SetPlayerHealthEx(playerid, PlayersData[playerid][Vida]);
 		SetPlayerSkin(playerid, PlayersData[playerid][Skin]);
 		GivePlayerMoney(playerid, PlayersData[playerid][Dinero]);
+  		SetPlayerScore(playerid, PlayersData[playerid][Nivel]);
 	    TogglePlayerSpectating(playerid, false);
 	    SendClientMessageEx(playerid, -1, "Bienvenido nuevamente a la comunidad de {484EFA}American{FFFFFF} Role{FFFF00}Play!, {FFFFFF}%s", RemoveUnderScore(playerid));
 		new HiMsg[45];
@@ -477,6 +479,7 @@ public OnPlayerConnect(playerid)
 	Spectador[playerid] = false;
     PlayersDataOnline[playerid][Mundo] = 0;
     Intentar[playerid] = true;
+    SetPlayerScore(playerid, PlayersData[playerid][Nivel]);
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -818,8 +821,10 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 			    }
    			    Logueado[playerid] = true;
 			    PlayersData[playerid][Nivel] 	= PLAYER_START_LEVEL;
+			    SetPlayerScore(playerid, PlayersData[playerid][Nivel]);
 			    PlayersData[playerid][Dinero]   = PLAYER_START_MONEY;
 			    PlayersData[playerid][Estado]   =   0;
+			    PlayersData[playerid][ExperienciaRe]    =   4;
 			    strmid(PlayersData[playerid][Password], inputtext, 0, strlen(inputtext), 255);
 		        format(MsgConnection, sizeof(MsgConnection), "{FFFFFF}Bien, ahora escriba la edad que tendrá su personaje.");
 			    ShowPlayerDialog(playerid, DIALOG_EDAD, DIALOG_STYLE_INPUT, "{005EF6}Registro{FFFFFF} » Edad", MsgConnection, "Continuar", "");
@@ -1147,15 +1152,31 @@ public PayDay(playerid)
     {
         if (IsPlayerConnected(i))
         {
+            new exp, lvl, expr;
+            expr= (PlayersData[playerid][ExperienciaRe]);
+            exp= (PlayersData[playerid][Experiencia]);
+            lvl= (PlayersData[playerid][Nivel]);
             GivePlayerMoney(playerid, 250);
             GivePlayerMoney(playerid, -10);
-            SendClientMessage(i, -1, "{FFFFFF}-------------------{FF0000}PAGO DIARIO{FFFFFf}----------------\n");
-            SendClientMessage(i, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
-            SendClientMessage(i, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
-            SendClientMessage(i, -1, "{00FF2B}TEST TEST TEST TEST TEST");
-            SendClientMessage(i, -1, "{FFFFFF}--------------------------------------------------------------");
-            PlayersData[i][Experiencia]++;
-            PlayerPlaySound(i, 1133, 0, 0, 10.0);
+            SendClientMessage(playerid, -1, "{FFFFFF}-------------------{FF0000}PAGO DIARIO{FFFFFf}----------------\n");
+            SendClientMessage(playerid, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
+            SendClientMessage(playerid, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
+            SendClientMessage(playerid, -1, "{00FF2B}TEST TEST TEST TEST TEST");
+            SendClientMessage(playerid, -1, "{FFFFFF}--------------------------------------------------------------");
+            PlayersData[playerid][Experiencia]++;
+            PlayerPlaySound(playerid, 1133, 0, 0, 10.0);
+            YSI_Save_Account(playerid);
+            if (exp == expr)
+            {
+				PlayersData[playerid][Nivel]++;
+				SetPlayerScore(playerid, GetPlayerScore(playerid)+1);
+				PlayersData[playerid][ExperienciaRe]= PlayersData[playerid][ExperienciaRe]+4;
+				PlayersData[playerid][Experiencia]=0;
+			}
+			if ( lvl > 1 )
+			{
+				expr= expr+4;
+			}
         }
     }
     return 1;
@@ -1194,6 +1215,7 @@ public YSI_Load_Account(playerid, name[], value[])
 	INI_Float("Chaleco",		PlayersData[playerid][Chaleco]);
 	INI_Int("Nivel",			PlayersData[playerid][Nivel]);
 	INI_Int("Experiencia",		PlayersData[playerid][Experiencia]);
+	INI_Int("ExperienciaRe",    PlayersData[playerid][ExperienciaRe]);
 	INI_Int("Faccion",			PlayersData[playerid][Faccion]);
 	INI_Int("Rango",			PlayersData[playerid][Rango]);
 	INI_Int("Interior",			PlayersData[playerid][Interior]);
@@ -1240,6 +1262,7 @@ public YSI_Save_Account(playerid)
 		INI_WriteFloat(PlayerStatsData, 	"Chaleco",  	    PlayersData[playerid][Chaleco]);
 		INI_WriteInt(PlayerStatsData, 		"Nivel", 			PlayersData[playerid][Nivel]);
         INI_WriteInt(PlayerStatsData, 		"Experiencia", 		PlayersData[playerid][Experiencia]);
+        INI_WriteInt(PlayerStatsData,       "ExperienciaRe",    PlayersData[playerid][ExperienciaRe]);
         INI_WriteInt(PlayerStatsData, 		"Faccion", 			PlayersData[playerid][Faccion]);
         INI_WriteInt(PlayerStatsData, 		"Rango", 			PlayersData[playerid][Rango]);
         INI_WriteInt(PlayerStatsData, 		"Interior", 		PlayersData[playerid][Interior]);
@@ -1265,7 +1288,6 @@ public YSI_Save_Account(playerid)
 	}
 	return 1;
 }
-
 public SendInfoMessage(playerid, type, optional[], message[])
 {
 	new MsgInfo[MAX_TEXT_CHAT];
@@ -1475,13 +1497,16 @@ CMD:vc(playerid, params[])//COMANDO /VC
 }
 CMD:stats(playerid, params[])
 {
-	new string2[400], dinero, sexo[10], skin, nivel, Float:chaleco, nAdmin[35];
+	new string2[400], dinero, sexo[10], skin, nivel, Float:chaleco, nAdmin[35], exp, lvl, expr;
 	dinero= GetPlayerMoney(playerid);
 	if(PlayersData[playerid][Sexo] ==1){    sexo= "Femenino";}
 	if(PlayersData[playerid][Sexo] ==2){    sexo= "Masculino";}
 	skin= GetPlayerSkin(playerid);
 	nivel= (PlayersData[playerid][Nivel]);
 	GetPlayerArmour(playerid, chaleco);
+	exp= (PlayersData[playerid][Experiencia]);
+	expr= (PlayersData[playerid][ExperienciaRe]);
+	lvl= GetPlayerScore(playerid);
  	if(PlayersData[playerid][Admin] == 0) { nAdmin = "{FFFFFF}Ninguno."; }
  	else if(PlayersData[playerid][Admin] == 1) { nAdmin = "{80FFFF}Ayudante"; }
 	else if(PlayersData[playerid][Admin] == 2) { nAdmin = "{00FF00}Staff"; }
@@ -1490,7 +1515,7 @@ CMD:stats(playerid, params[])
 	else if(PlayersData[playerid][Admin] == 5) { nAdmin = "{FF0000}Co-Admin"; }
 	else if(PlayersData[playerid][Admin] == 6) { nAdmin = "{400000}Administrador"; }
 	else if(PlayersData[playerid][Admin] == 7) { nAdmin = "{3C3C3C}Scripter"; }
-	format(string2,sizeof(string2),"{0080FF}Nombre: {FFFFFF}%s\n{0080FF}Nivel: {FFFFFF}%d\n{0080FF}Dinero: {008000}${FFFFFF}%d\n{0080FF}Sexo: {FFFFFF}%s\n{0080FF}Skin: {FFFFFF}%d\n{0080FF}Chaleco: {FFFFFF}%d\n{0080FF}Administración: %s",RemoveUnderScore(playerid), nivel, dinero, sexo, skin, chaleco, nAdmin);
+	format(string2,sizeof(string2),"{0080FF}Nombre: {FFFFFF}%s\n{0080FF}Nivel: {FFFFFF}%d\n{0080FF}Dinero: {008000}${FFFFFF}%d\n{0080FF}Sexo: {FFFFFF}%s\n{0080FF}Skin: {FFFFFF}%d\n{0080FF}Chaleco: {FFFFFF}%d\n{0080FF}Experiencia: {FFFFFF}%d/%d {0080FF}Nivel: {FFFFFF}%d\n{0080FF}Administración: %s",RemoveUnderScore(playerid), nivel, dinero, sexo, skin, chaleco, exp, expr, lvl, nAdmin);
 	ShowPlayerDialog(playerid,DIALOG_STATS,DIALOG_STYLE_MSGBOX,"{FF3535}Panel{FFFFFF}» {FF8000}Estadisticas",string2,"Cerrar","");
 	return 1;
 }
