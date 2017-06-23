@@ -1170,28 +1170,28 @@ public PayDay(playerid)
     {
         if (IsPlayerConnected(i) && Logueado[i])
         {
-            new msg[150], exp, lvl, expr;
-            expr= (PlayersData[playerid][ExperienciaRe]);
-            exp= (PlayersData[playerid][Experiencia]);
-            lvl= (PlayersData[playerid][Nivel]);
-            GivePlayerMoney(playerid, 250);
-            GivePlayerMoney(playerid, -10);
-            SendClientMessage(playerid, -1, "{A7A7A7}======================{FF0000}PAGO DIARIO{A7A7A7}======================\n");
-            SendClientMessage(playerid, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
-            SendClientMessage(playerid, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
-            SendClientMessage(playerid, -1, "{00FF2B}Otro Mensaje xd");
-            SendClientMessage(playerid, -1, "{A7A7A7}=======================================================");
-            format(msg, sizeof(msg), "~b~Hora de la Paga!");
-            GameTextForPlayer(playerid, msg, 15000, 1);
-            PlayersData[playerid][Experiencia]++;
-            PlayerPlaySound(playerid, 1133, 0, 0, 10.0);
-            YSI_Save_Account(playerid);
+            new msg[100], exp, lvl, expr;
+            expr= (PlayersData[i][ExperienciaRe]);
+            exp= (PlayersData[i][Experiencia]);
+            lvl= (PlayersData[i][Nivel]);
+            GivePlayerMoney(i, 250);
+            GivePlayerMoney(i, -10);
+            SendClientMessage(i, -1, "{A7A7A7}======================{FF0000}PAGO DIARIO{A7A7A7}======================\n");
+            SendClientMessage(i, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
+            SendClientMessage(i, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
+            SendClientMessage(i, -1, "{00FF2B}Otro Mensaje xd");
+            SendClientMessage(i, -1, "{A7A7A7}=======================================================");
+    		format(msg, sizeof(msg), "~B~Hora de la Paga!");
+			GameTextForPlayer(i, msg, 1000, 1);
+            PlayersData[i][Experiencia]++;
+            PlayerPlaySound(i, 1133, 0, 0, 10.0);
+            YSI_Save_Account(i);
             if (exp == expr)
             {
-				PlayersData[playerid][Nivel]++;
-				SetPlayerScore(playerid, GetPlayerScore(playerid)+1);
-				PlayersData[playerid][ExperienciaRe]= PlayersData[playerid][ExperienciaRe]+4;
-				PlayersData[playerid][Experiencia]=0;
+				PlayersData[i][Nivel]++;
+				SetPlayerScore(i, GetPlayerScore(playerid)+1);
+				PlayersData[i][ExperienciaRe]= PlayersData[i][ExperienciaRe]+4;
+				PlayersData[i][Experiencia]=0;
 			}
 			if ( lvl > 1 )
 			{
@@ -1517,12 +1517,11 @@ CMD:vc(playerid, params[])//COMANDO /VC
 }
 CMD:stats(playerid, params[])
 {
-	new string2[400], dinero, sexo[10], skin, nivel, Float:chaleco, nAdmin[35], exp, lvl, expr;
+	new string2[400], dinero, sexo[10], skin, Float:chaleco, nAdmin[35], exp, lvl, expr;
 	dinero= GetPlayerMoney(playerid);
 	if(PlayersData[playerid][Sexo] ==1){    sexo= "Femenino";}
 	if(PlayersData[playerid][Sexo] ==2){    sexo= "Masculino";}
 	skin= GetPlayerSkin(playerid);
-	nivel= (PlayersData[playerid][Nivel]);
 	GetPlayerArmour(playerid, chaleco);
 	exp= (PlayersData[playerid][Experiencia]);
 	expr= (PlayersData[playerid][ExperienciaRe]);
@@ -1535,16 +1534,17 @@ CMD:stats(playerid, params[])
 	else if(PlayersData[playerid][Admin] == 5) { nAdmin = "{FF0000}Co-Admin"; }
 	else if(PlayersData[playerid][Admin] == 6) { nAdmin = "{400000}Administrador"; }
 	else if(PlayersData[playerid][Admin] == 7) { nAdmin = "{3C3C3C}Scripter"; }
-	format(string2,sizeof(string2),"{0080FF}Nombre: {FFFFFF}%s\n{0080FF}Nivel: {FFFFFF}%d\n{0080FF}Dinero: {008000}${FFFFFF}%d\n{0080FF}Sexo: {FFFFFF}%s\n{0080FF}Skin: {FFFFFF}%d\n{0080FF}Chaleco: {FFFFFF}%d\n{0080FF}Experiencia: {FFFFFF}%d/%d {0080FF}Nivel: {FFFFFF}%d\n{0080FF}Administración: %s",RemoveUnderScore(playerid), nivel, dinero, sexo, skin, chaleco, exp, expr, lvl, nAdmin);
+	format(string2,sizeof(string2),"{0080FF}Nombre: {FFFFFF}%s\n{0080FF}Dinero: {008000}${FFFFFF}%d\n{0080FF}Sexo: {FFFFFF}%s\n{0080FF}Skin: {FFFFFF}%d\n{0080FF}Chaleco: {FFFFFF}%d\n{0080FF}Experiencia: {FFFFFF}%d/%d {0080FF}Nivel: {FFFFFF}%d\n{0080FF}Administración: %s",RemoveUnderScore(playerid), dinero, sexo, skin, chaleco, exp, expr, lvl, nAdmin);
 	ShowPlayerDialog(playerid,DIALOG_STATS,DIALOG_STYLE_MSGBOX,"{FF3535}Panel{FFFFFF}» {FF8000}Estadisticas",string2,"Cerrar","");
 	return 1;
 }
 CMD:admins(playerid, params[])
 {
 	new ladm[150], rango[25], estado[25];
-	for(new i=0; i<= 200; i++)
+	SendClientMessage(playerid, -1, "{9B9B9B}.................................::::{B90000}Admin{008000} Online{9B9B9B}::::.................................");
+	for(new i; i < MAX_PLAYERS; i++)
 	{
-		if (IsPlayerConnected(i) || PlayersData[i][Admin] >= 1)
+		if (IsPlayerConnected(i) && PlayersData[i][Admin] >= 1)
 		{
 		if(PlayersData[i][Admin] == 1) { rango = "{80FFFF}Ayudante"; }
 		else if(PlayersData[i][Admin] == 2) { rango = "{00FF00}Staff"; }
@@ -1555,9 +1555,12 @@ CMD:admins(playerid, params[])
 		else if(PlayersData[i][Admin] == 7) { rango = "{3C3C3C}Scripter";}
 		if(PlayersData[i][AdminOn] == 0) { estado = "{FF53FF}Roleando";}
 		else if(PlayersData[i][AdminOn] == 1) { estado = "{FF0000}Servicio";}
-		SendClientMessage(playerid, -1, "{9B9B9B}.................................::::{B90000}Admin{008000} Online{9B9B9B}::::.................................");
 		format(ladm, sizeof(ladm), "%s:{FFFFBB} %s {A7A7A7}[%s{A7A7A7}]", rango, RemoveUnderScore(i), estado);
 		SendClientMessage(playerid, -1, ladm);
+		}
+		else if(IsPlayerConnected(i) && PlayersData[i][Admin] == 1)
+		{
+		    SendClientMessage(playerid, -1, "{B30000}No hay ningún miembro del Staff disponible.");
 		}
 	}
 	return 1;
@@ -1577,19 +1580,6 @@ CMD:copyright(playerid, params[])
     ShowPlayerDialog(playerid, 999, DIALOG_STYLE_MSGBOX, "{00A5FF}Créditos © {484EFA}American{FFFFFF} Role{FFFF00}Play", MsgDialogCreditos, "Aceptar", "");
 	return 1;
 }
-CMD:jgstudio(playerid, params[])
-{
-	new MsgDialogJGStudio[800];
- 	format(MsgDialogJGStudio, sizeof(MsgDialogJGStudio), "{368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio{FFFFFF}:\n\n");
-  	strcat(MsgDialogJGStudio, "{C0C0C0}Es una empresa creada para el Diseño Web y Desarrollo de Software.\n");
-  	strcat(MsgDialogJGStudio, "{C0C0C0}Fundada por el dueño del Servidor {FFFFFF}Joseph Gonzalez{C0C0C0} el {F5FF00}10/06/2017\n");
-   	strcat(MsgDialogJGStudio, "{C0C0C0}Ademas de el Script de esta GM, es la encargada de todo el diseño del Servidor.\n");
- 	strcat(MsgDialogJGStudio, "{C0C0C0}Desprendiendo de éste trabajo, su compañía secundaria: {368AC9}J{FFFFFF}G{C0C0C0}-{FF8080}Design{FFFFFF}\n");
-  	strcat(MsgDialogJGStudio, "{C0C0C0}Ambas compañías se encargan del Desarrollo de este servidor desde el {F5FF00}07/11/2016{C0C0C0}.\n");
-   	strcat(MsgDialogJGStudio, "\n\t{0080FF}Facebook: {FFFFFF}@JGStudio{00A5FF} - {FF8040}GitHub: {FFFFFF}@JGStudio{00A5FF} - {80FFFF}Twitter: {FFFFFF}@JGStudioO");
-    ShowPlayerDialog(playerid, 999, DIALOG_STYLE_MSGBOX, "{368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio {FFFFFF}© {5BADFF}Información", MsgDialogJGStudio, "Aceptar", "");
-	return 1;
-}
 CMD:duda(playerid, params[])
 {
 	new msg[300];
@@ -1598,36 +1588,42 @@ CMD:duda(playerid, params[])
   		SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Duda [Texto]");
     	return 1;
 	}
- 	format(msg, sizeof(msg), "{FF8080}[Dudas]: {FF80C0}%s {A7A7A7}[ID: %d]: %s", RemoveUnderScore(playerid), playerid, params);
-	if(PlayersData[playerid][Admin] >=1)
+	for(new i; i < MAX_PLAYERS; i++)
 	{
-	    SendClientMessage(playerid, -1, msg);
-	}
-	else
-	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Haz enviado una duda a la administración, espera que te respondan.");
+		if (IsPlayerConnected(i) && PlayersData[i][Admin] >= 1)
+		{
+ 			format(msg, sizeof(msg), "{FF8080}[Dudas]: {FF80C0}%s {A7A7A7}[ID: %d]: %s", RemoveUnderScore(playerid), playerid, params);
+			if(PlayersData[i][Admin] >=1)
+			{
+	    		SendClientMessage(i, -1, msg);
+			}
+			else
+			{
+	    		SendClientMessage(i, -1, "{A7A7A7}[Administración]: Haz enviado una duda a la administración, espera que te respondan.");
+			}
+			}
 	}
 	return 1;
 }
 CMD:reportar(playerid, params[])
 {
-	new msg[300], pr;
-	if(isnull(params))
-	{
-	    SendClientMessage(playerid,-1, "{A7A7A7}[Administración]: Utiliza /Reportar [ID] [Razón]");
-	}
-	if(PlayersData[playerid][Admin] >=1)
-	{
-	    pr= params[0];
- 		format(msg, sizeof(msg), "{C60000}[Reportes]: El usuario %s[ID: %d] fue reportado por: %s", RemoveUnderScore(pr), pr, params[1]);
-	    SendClientMessage(playerid, -1, msg);
-	}
-	else
-	{
-		format(msg, sizeof(msg), "{C60000}[Reportes]: Haz reportado a %s[ID: %d] por: %s", RemoveUnderScore(pr), pr, params[1]);
-	    SendClientMessage(playerid, -1, msg);
-	}
-	return 1;
+    if(sscanf(params, "us[128]", params[0], params[1])) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Reportar [ID] [Razón]");
+    new nombre[MAX_PLAYER_NAME], nombre2[MAX_PLAYER_NAME], string[250];
+    GetPlayerName(playerid, nombre, sizeof(nombre));
+    GetPlayerName(params[0], nombre2, sizeof(nombre2));
+    for(new i = 0; i < MAX_PLAYERS; i++)
+    {
+        if(IsPlayerConnected(i))
+        {
+            if(PlayersData[i][Admin] > 0)
+            {
+                format(string, sizeof(string), "{D50000}[Reportes]: %s[ID:%d] ha reportado a %s[ID:%d]. Razón: %s", nombre, playerid, nombre2, params[0], params[1]);
+                SendClientMessage(i, -1, string);
+            }
+        }
+    }
+    SendClientMessage(playerid, -1, "{48A4FF}[Información]: Tú reporte ha sido enviado, gracias por reportar!");
+    return 1;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////-----------===============================[ - Comandos Administrativos - ]===============================-----------//////////////////////////////////////////
@@ -1846,7 +1842,7 @@ CMD:o(playerid, params[])
             SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /O [Texto General]");
             return 1;
 		}
-    	format(str, sizeof(str), "{FFA214}[OOC] %s: %s", RemoveUnderScore(playerid), params);
+    	format(str, sizeof(str), "{FFA214}[OOC][%d] %s: %s",playerid, RemoveUnderScore(playerid), params);
     	SendClientMessageToAll(-1, str);
     }
     else
