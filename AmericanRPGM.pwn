@@ -52,7 +52,7 @@
 #define strcmpEx(%0,%1) 				strcmp(%0, %1, true) == 0
 #define CMD_LOG  true
 #define HOLDING(%0)
-#define COLOR_BLANCO 0xffffffff
+#define COLOR_BLANCO 0xFFFFFFFF
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 new bool:Intentar[MAX_PLAYERS];
 new MotorAuto[MAX_VEHICLES];
@@ -73,7 +73,6 @@ new Text:Textdraw10;
 new Text:Textdraw11;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- COLORES -]===--- */
-#define C_Blanco         0xFFFFFFFF
 new AdminsRangosColors[9] =
 {
 	0x80FFFFFF,
@@ -624,11 +623,11 @@ public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 	if (GetPlayerVehicleSeat(playerid)==0){
 	if(MotorAuto[vehicleid] == 0)
 	{
-		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
+		SendClientMessage(playerid,COLOR_BLANCO,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
 	}
 	if(MotorAuto[vehicleid] == 1)
 	{
-		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
+		SendClientMessage(playerid,COLOR_BLANCO,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
 	}
 	}
  	return 1;
