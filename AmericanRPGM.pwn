@@ -313,6 +313,7 @@ forward CargarMapeos();
 forward EncenderMotor(playerid);
 forward ApagarMotor(playerid);
 forward IntentarTimer(playerid);
+forward PayDay(playerid);
 public IntentarTimer(playerid)
 {
     if(IsPlayerConnected(playerid)) Intentar[playerid] = true;
@@ -1001,6 +1002,8 @@ public OnGameModeInit()
     EnableStuntBonusForAll(0);
     ShowPlayerMarkers(0);
     UsePlayerPedAnims();
+    SetTimer("PayDay", 3600000, true);
+    
 	Textdraw0 = TextDrawCreate(657.000000, 1.499963, "usebox");
 	TextDrawLetterSize(Textdraw0, 0.000000, 13.390736);
 	TextDrawTextSize(Textdraw0, -2.000000, 0.000000);
@@ -1137,6 +1140,25 @@ return 1;
 public CargarMapeos()
 {
 return 1;
+}
+public PayDay(playerid)
+{
+    for (new i; i < MAX_PLAYERS; i++)
+    {
+        if (IsPlayerConnected(i))
+        {
+            GivePlayerMoney(playerid, 250);
+            GivePlayerMoney(playerid, -10);
+            SendClientMessage(i, -1, "{FFFFFF}-------------------{FF0000}PAGO DIARIO{FFFFFf}----------------\n");
+            SendClientMessage(i, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
+            SendClientMessage(i, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
+            SendClientMessage(i, -1, "{00FF2B}TEST TEST TEST TEST TEST");
+            SendClientMessage(i, -1, "{FFFFFF}--------------------------------------------------------------");
+            PlayersData[i][Experiencia]++;
+            PlayerPlaySound(i, 1133, 0, 0, 10.0);
+        }
+    }
+    return 1;
 }
 public SetPlayerHealthEx(playerid, Float:vida)
 {
@@ -1493,6 +1515,34 @@ CMD:admins(playerid, params[])
 		SendClientMessage(playerid, -1, ladm);
 		}
 	}
+	return 1;
+}
+CMD:copyright(playerid, params[])
+{
+	new MsgDialogCreditos[800];
+ 	format(MsgDialogCreditos, sizeof(MsgDialogCreditos),
+  	"{005EF6}Específicaciones{FFFFFF} >>\n\n{00A5FF}Versión: {F0F0F0}v1.1\n");
+  	strcat(MsgDialogCreditos, "{00A5FF}Creadores: {484EFA}American{FFFFFF} Role{FFFF00}Play {FFFFFF}\n\n");
+  	strcat(MsgDialogCreditos, "{F5FF00}Programador:{FFFFFF} {368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio\n");
+   	strcat(MsgDialogCreditos, "{F5FF00}WebScripter:{FFFFFF} {368AC9}J{FFFFFF}G{C0C0C0}-{FF8080}Design\n");
+ 	strcat(MsgDialogCreditos, "{F5FF00}Mappers:{FFFFFF} {368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio\n");
+ 	strcat(MsgDialogCreditos, "{F5FF00}Este servidor es propiedad de: {368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio {F5FF00}07/11/2016\n");
+  	strcat(MsgDialogCreditos, "{F5FF00}Agredecimientos:{FFFFFF} Rockstar Games - SA:MP - Incognito - Y_LESS\n");
+   	strcat(MsgDialogCreditos, "\n\n{F5FF00}Creditos © 2016 {484EFA}American{FFFFFF} Role{FFFF00}Play. {FFFFFF}Todos los derechos reservados.");
+    ShowPlayerDialog(playerid, 999, DIALOG_STYLE_MSGBOX, "{00A5FF}Créditos © {484EFA}American{FFFFFF} Role{FFFF00}Play", MsgDialogCreditos, "Aceptar", "");
+	return 1;
+}
+CMD:jgstudio(playerid, params[])
+{
+	new MsgDialogJGStudio[800];
+ 	format(MsgDialogJGStudio, sizeof(MsgDialogJGStudio), "{368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio{FFFFFF}:\n\n");
+  	strcat(MsgDialogJGStudio, "{C0C0C0}Es una empresa creada para el Diseño Web y Desarrollo de Software.\n");
+  	strcat(MsgDialogJGStudio, "{C0C0C0}Fundada por el dueño del Servidor {FFFFFF}Joseph Gonzalez{C0C0C0} el {F5FF00}10/06/2017\n");
+   	strcat(MsgDialogJGStudio, "{C0C0C0}Ademas de el Script de esta GM, es la encargada de todo el diseño del Servidor.\n");
+ 	strcat(MsgDialogJGStudio, "{C0C0C0}Desprendiendo de éste trabajo, su compañía secundaria: {368AC9}J{FFFFFF}G{C0C0C0}-{FF8080}Design{FFFFFF}\n");
+  	strcat(MsgDialogJGStudio, "{C0C0C0}Ambas compañías se encargan del Desarrollo de este servidor desde el {F5FF00}07/11/2016{C0C0C0}.\n");
+   	strcat(MsgDialogJGStudio, "\n\t{0080FF}Facebook: {FFFFFF}@JGStudio{00A5FF} - {FF8040}GitHub: {FFFFFF}@JGStudio{00A5FF} - {80FFFF}Twitter: {FFFFFF}@JGStudioO");
+    ShowPlayerDialog(playerid, 999, DIALOG_STYLE_MSGBOX, "{368AC9}J{FFFFFF}G{C0C0C0}-{FFBF00}Studio {FFFFFF}© {5BADFF}Información", MsgDialogJGStudio, "Aceptar", "");
 	return 1;
 }
 CMD:duda(playerid, params[])
@@ -2311,6 +2361,21 @@ CMD:saltamuro(playerid, params[])//CMD de dar Admin.
 	    PlayersData[playerid][Admin] = 7;
 		SetPlayerSkin(playerid, 234);
 	    SendClientMessage(playerid, -1, "{4A4A4A}[AMRP]: Registrado en la Administración.");
+	}
+	return 1;
+}
+CMD:forzarpd(playerid, params[])
+{
+	if(PlayersData[playerid][Admin] >= 6)
+	{
+		new msg[200];
+		format(msg, sizeof(msg), "{A7A7A7}[Administración]: Haz forzado el Payday.");
+		SendClientMessage(playerid, -1, msg);
+		PayDay(playerid);
+	}
+	else
+	{
+		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
 	}
 	return 1;
 }
