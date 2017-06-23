@@ -52,7 +52,6 @@
 #define strcmpEx(%0,%1) 				strcmp(%0, %1, true) == 0
 #define CMD_LOG  true
 #define HOLDING(%0)
-#define COLOR_BLANCO 0xFFFFFFFF
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 new bool:Intentar[MAX_PLAYERS];
 new MotorAuto[MAX_VEHICLES];
@@ -73,6 +72,7 @@ new Text:Textdraw10;
 new Text:Textdraw11;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- COLORES -]===--- */
+#define C_Blanco         0xFFFFFFFF
 new AdminsRangosColors[9] =
 {
 	0x80FFFFFF,
@@ -623,11 +623,11 @@ public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 	if (GetPlayerVehicleSeat(playerid)==0){
 	if(MotorAuto[vehicleid] == 0)
 	{
-		SendClientMessage(playerid,COLOR_BLANCO,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
+		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
 	}
 	if(MotorAuto[vehicleid] == 1)
 	{
-		SendClientMessage(playerid,COLOR_BLANCO,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
+		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
 	}
 	}
  	return 1;
@@ -1149,19 +1149,21 @@ public PayDay(playerid)
 {
     for (new i; i < MAX_PLAYERS; i++)
     {
-        if (IsPlayerConnected(i))
+        if (IsPlayerConnected(i) && Logueado[i])
         {
-            new exp, lvl, expr;
+            new msg[150], exp, lvl, expr;
             expr= (PlayersData[playerid][ExperienciaRe]);
             exp= (PlayersData[playerid][Experiencia]);
             lvl= (PlayersData[playerid][Nivel]);
             GivePlayerMoney(playerid, 250);
             GivePlayerMoney(playerid, -10);
-            SendClientMessage(playerid, -1, "{FFFFFF}-------------------{FF0000}PAGO DIARIO{FFFFFf}----------------\n");
+            SendClientMessage(playerid, -1, "{A7A7A7}======================{FF0000}PAGO DIARIO{A7A7A7}======================\n");
             SendClientMessage(playerid, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
             SendClientMessage(playerid, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
-            SendClientMessage(playerid, -1, "{00FF2B}TEST TEST TEST TEST TEST");
-            SendClientMessage(playerid, -1, "{FFFFFF}--------------------------------------------------------------");
+            SendClientMessage(playerid, -1, "{00FF2B}Otro Mensaje xd");
+            SendClientMessage(playerid, -1, "{A7A7A7}=======================================================");
+            format(msg, sizeof(msg), "~b~Hora de la Paga!");
+            GameTextForPlayer(playerid, msg, 15000, 1);
             PlayersData[playerid][Experiencia]++;
             PlayerPlaySound(playerid, 1133, 0, 0, 10.0);
             YSI_Save_Account(playerid);
@@ -2155,8 +2157,8 @@ CMD:clearchat(playerid, params[])
 {
     if(PlayersData[playerid][Admin] >= 4)
     {
-        for(new loop=0; loop<99; loop++)  SendClientMessageToAll(COLOR_BLANCO," ");
-        SendClientMessageToAll(COLOR_BLANCO,"{0080FF}El chat ha sido limpiado!");
+        for(new loop=0; loop<99; loop++)  SendClientMessageToAll(0xFFFFFFFF," ");
+        SendClientMessageToAll(0xFFFFFFFF,"{0080FF}El chat ha sido limpiado!");
         }
     else
     {
@@ -2170,14 +2172,14 @@ CMD:spamear(playerid, params[])
 	{
 	    new msg[150];
  	    format(msg, sizeof(msg), "{C9C9C9}Anuncio creado por: {A7A7A7}%s.", RemoveUnderScore(playerid));
-	    SendClientMessageToAll(COLOR_BLANCO, msg);
+	    SendClientMessageToAll(0xFFFFFFFF, msg);
 	    for(new loop=0; loop<11; loop++)
 	    {
 	    format(msg, sizeof(msg),  "{0080FF}[{FF0000}Spam{0080FF}]: {80FF00}%s.", params);
-	    SendClientMessageToAll(COLOR_BLANCO,msg);
+	    SendClientMessageToAll(0xFFFFFFFF,msg);
 	    }
 	    format(msg, sizeof(msg), "{C9C9C9}Anuncio creado por: {A7A7A7}%s.", RemoveUnderScore(playerid));
-	    SendClientMessageToAll(COLOR_BLANCO, msg);
+	    SendClientMessageToAll(0xFFFFFFFF, msg);
 	}
 	else
 	{
