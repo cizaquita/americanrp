@@ -73,7 +73,6 @@ new Text:Textdraw10;
 new Text:Textdraw11;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- COLORES -]===--- */
-#define C_Blanco         0xFFFFFFFF
 new AdminsRangosColors[9] =
 {
 	0x80FFFFFF,
@@ -97,8 +96,11 @@ enum PlayerData
 	Nivel, //Inicial - 1
 	Experiencia, //Inicial - 0
 	ExperienciaRe, //Experiencia requerida Nivel+4
-	Faccion, //0 - 1 DESACTIVADO ACTUAL.
-	Rango, //0 - 6 DESACTIVADO ACTUAL.
+	Movil, //0-No tiene, 1-Si tiene
+	Numero, //Numero de móvil
+	Saldo, //Saldo Inicial 1200
+	Faccion, //0 - 10 DESACTIVADO ACTUAL.
+	Rango, //0 - 7 DESACTIVADO ACTUAL.
 	Interior, //VW
 	Skin, //31-Mujer, 35-Hombre
 	Acento, //En Proceso.
@@ -327,6 +329,7 @@ forward EncenderMotor(playerid);
 forward ApagarMotor(playerid);
 forward IntentarTimer(playerid);
 forward PayDay(playerid);
+
 public IntentarTimer(playerid)
 {
     if(IsPlayerConnected(playerid)) Intentar[playerid] = true;
@@ -494,6 +497,7 @@ public OnPlayerConnect(playerid)
     SetPlayerScore(playerid, PlayersData[playerid][Nivel]);
     gettime(Hora, Minuto);
     SetPlayerTime(playerid,Hora,Minuto);
+    SetPlayerColor(playerid, 0x454545FF);
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -562,7 +566,7 @@ public OnPlayerText(playerid, text[])
 {
     new string[160];
     format(string, sizeof(string), "%s dice: %s", RemoveUnderScore(playerid), text);
-    DetectorCercania(20.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
+    DetectorCercania(7.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
     SetPlayerChatBubble(playerid, text, -1, 7.0, 15000);
     return 0;
 }
@@ -572,23 +576,23 @@ public OnPlayerUpdate(playerid)
 }
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
-       new IDAuto = GetPlayerVehicleID(playerid);//define que IDAuto es la id del auto
-       if(newkeys == KEY_FIRE)//Para que encendiera seria el click osea KEY_FIRE
+       new IDAuto = GetPlayerVehicleID(playerid);
+       if(newkeys == KEY_FIRE)
        {
-        if(IsPlayerInAnyVehicle(playerid))//si esta en un vehiculo
+        if(IsPlayerInAnyVehicle(playerid))
             {
-            if(MotorAuto[IDAuto] == 0)//si el motor esta apagado
+            if(MotorAuto[IDAuto] == 0)
             {
-          SetTimerEx("EncenderMotor", 500, false, "d", playerid);//timer para encender el vehiculo [2500 = 2,5 segundos]
-          GameTextForPlayer(playerid, "~w~Encendiendo...",2000,3);//mensaje que dice que el motor se esta encendiendo
+          SetTimerEx("EncenderMotor", 500, false, "d", playerid);
+          GameTextForPlayer(playerid, "~w~Encendiendo...",2000,3);
 		  new string[128 + MAX_PLAYER_NAME];
 		  format(string, sizeof(string), "*%s inserta la llave en el switch y la gira levemente!", RemoveUnderScore(playerid));
     	  DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
          }
 			else
          {
-          SetTimerEx("ApagarMotor", 500, false, "d", playerid);//tiempo en apagar el motor [1500 = 1,5 segundos]
-          GameTextForPlayer(playerid, "~w~Apagando...",1000,3);//mensaje que dice que el motor se esta apagando
+          SetTimerEx("ApagarMotor", 500, false, "d", playerid);
+          GameTextForPlayer(playerid, "~w~Apagando...",1000,3);
 		  new string[128 + MAX_PLAYER_NAME];
 		  format(string, sizeof(string), "*%s gira la llave del switch!", RemoveUnderScore(playerid));
     	  DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
@@ -600,13 +604,12 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 }
 public EncenderMotor(playerid)
     {
-            new IDAuto = GetPlayerVehicleID(playerid);//define que IDAuto es la id del auto
-       		new enginem, lights, alarm, doors, bonnet, boot, objective;//define las cosas del auto
+			new IDAuto = GetPlayerVehicleID(playerid);
+       		new enginem, lights, alarm, doors, bonnet, boot, objective;
        		GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
-
-       		SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_ON, lights, alarm, doors, bonnet, boot, objective);//deja el auto con las luces encendidas, motor, etc.
-       		GameTextForPlayer(playerid, "~w~Motor ~g~Encendido",1000,3);//mensaje de encendido
-       		MotorAuto[IDAuto] = 1;//deja el motor encendido
+       		SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_ON, lights, alarm, doors, bonnet, boot, objective);
+       		GameTextForPlayer(playerid, "~w~Motor ~g~Encendido",1000,3);
+       		MotorAuto[IDAuto] = 1;
     		new string[128 + MAX_PLAYER_NAME];
     		format(string, sizeof(string), "**Vehículo encendido [ID:%d]", playerid);
     		DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
@@ -616,10 +619,9 @@ public ApagarMotor(playerid)
         new IDAuto = GetPlayerVehicleID(playerid);
     	new enginem, lights, alarm, doors, bonnet, boot, objective;
        	GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
-
-       	SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_OFF, lights, alarm, doors, bonnet, boot, objective);//deja el motor y las demas cosas apagadas
-       	GameTextForPlayer(playerid, "~w~Motor ~r~Apagado",1000,3);//mensaje de apagado
-       	MotorAuto[IDAuto] = 0;//deja el motor apagado
+       	SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_OFF, lights, alarm, doors, bonnet, boot, objective);
+       	GameTextForPlayer(playerid, "~w~Motor ~r~Apagado",1000,3);
+       	MotorAuto[IDAuto] = 0;
 		new string[128 + MAX_PLAYER_NAME];
  		format(string, sizeof(string), "**Vehículo apagado [ID:%d]", playerid);
 		DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
@@ -640,11 +642,11 @@ public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 	if (GetPlayerVehicleSeat(playerid)==0){
 	if(MotorAuto[vehicleid] == 0)
 	{
-		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
+		SendClientMessage(playerid,0xFFFFFFFF,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
 	}
 	if(MotorAuto[vehicleid] == 1)
 	{
-		SendClientMessage(playerid,C_Blanco,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
+		SendClientMessage(playerid,0xFFFFFFFF,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
 	}
 	}
  	return 1;
@@ -1397,15 +1399,15 @@ CMD:susurrar(playerid, params[])//COMANDO /Susurrar
     if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /Susurrar <texto>");
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "%s susurra: %s", RemoveUnderScore(playerid), params);
-    DetectorCercania(5.0, playerid, string, 0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF);
+    DetectorCercania(3.0, playerid, string, 0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF);
     return 1;
 }
-CMD:ame(playerid, params[])//COMANDO /Ame
+CMD:do(playerid, params[])//COMANDO /Ame
 {
     if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /ame <entorno>");
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "**%s [ID:%d]", params, playerid);
-    DetectorCercania(15.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+    DetectorCercania(15.0, playerid, string, 0x55FF80FF,0x84FFA3FF,0x84FFA3FF,0x84FFA3FF,0x84FFA3FF);
     return 1;
 }
 CMD:intentar(playerid, params[])//COMANDO /Intentar
@@ -1441,7 +1443,7 @@ CMD:b(playerid, params[])//COMANDO /B
     if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /B <texto>");
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "[OOC]%s: (( %s ))", RemoveUnderScore(playerid), params);
-    DetectorCercania(15.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
+    DetectorCercania(10.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
     return 1;
 }
 CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
@@ -1451,10 +1453,10 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
   		SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Pasaporte [ID]");
     	return 1;
 	}
-	new pID, string[300], string2[150], ciudad[15], sexo[10], edad, trabajo[20], cargo[15], relacion[30];
+	new pID, string[300], ciudad[15], sexo[10], edad, trabajo[20], cargo[15], relacion[30];
 	pID=strval(params);
 	if(!IsPlayerConnected(pID)) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Jugador no conectado.");
-    if(ProxDetectorS(8.0, playerid, params[0]) || pID == playerid)
+    if(ProxDetectorS(5.0, playerid, pID) || playerid == pID)
     {
 	if(PlayersData[playerid][Ciudad] == 1) { ciudad="Los Santos";}
 	if(PlayersData[playerid][Ciudad] == 2) { ciudad="San Fierro";}
@@ -1467,17 +1469,16 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
 	relacion= "Soltero";
     if (playerid == pID)
     {
-        format(string2, sizeof(string2), "{C2A2DA}* %s mira su pasaporte", RemoveUnderScore(playerid));
 		format(string, sizeof(string), "{FF8040}Nombre: {FFFFFF}%s\n{FF8040}Sexo: {FFFFFF}%s\n{FF8040}Edad: {FFFFFF}%d\n{FF8040}Residencia: {FFFFFF}%s\n{FF8040}Trabajo: {FFFFFF}%s\n{FF8040}Cargo: {FFFFFF}%s\n{FF8040}Relación: {FFFFFF}%s", RemoveUnderScore(playerid), sexo, edad, ciudad, trabajo, cargo, relacion);
 		ShowPlayerDialog(pID, DIALOG_PASAPORTE, DIALOG_STYLE_MSGBOX, "\t{C0C0C0}....::{0080FF}San {FF0000}Andreas {FF8000}Passport{C0C0C0}::....", string, "Aceptar","");
-		SendClientMessageToAll(-1, string2);
+		SendClientMessage(playerid, -1, "{48A4FF}[Información]: Haz revisado tu pasaporte");
 	}
 	else
 	{
-    format(string2, sizeof(string2), "{C2A2DA}* %s le enseña su pasaporte a %s", RemoveUnderScore(playerid), RemoveUnderScore(pID));
 	format(string, sizeof(string), "{FF8040}Nombre: {FFFFFF}%s\n{FF8040}Sexo: {FFFFFF}%s\n{FF8040}Edad: {FFFFFF}%d\n{FF8040}Residencia: {FFFFFF}%s\n{FF8040}Trabajo: {FFFFFF}%s\n{FF8040}Cargo: {FFFFFF}%s\n{FF8040}Relación: {FFFFFF}%s", RemoveUnderScore(playerid), sexo, edad, ciudad, trabajo, cargo, relacion);
 	ShowPlayerDialog(pID, DIALOG_PASAPORTE, DIALOG_STYLE_MSGBOX, "\t{C0C0C0}....::{0080FF}San {FF0000}Andreas {FF8000}Passport{C0C0C0}::....", string, "Aceptar","");
-	SendClientMessageToAll(-1, string2);
+	SendClientMessageEx(pID, -1, "{48A4FF}[Información]: %s te ha enseñado su pasaporte", RemoveUnderScore(playerid));
+	SendClientMessageEx(playerid, -1, "{48A4FF}[Información]: Le haz enseñado tu pasaporte a %s", RemoveUnderScore(playerid));
 	}
 	return 1;
     }
@@ -1553,16 +1554,16 @@ CMD:admins(playerid, params[])
 		else if(PlayersData[i][Admin] == 5) { rango = "{FF0000}Co-Admin"; }
  		else if(PlayersData[i][Admin] == 6) { rango = "{400000}Administrador"; }
 		else if(PlayersData[i][Admin] == 7) { rango = "{3C3C3C}Scripter";}
-		if(PlayersData[i][AdminOn] == 0) { estado = "{FF53FF}Roleando";}
-		else if(PlayersData[i][AdminOn] == 1) { estado = "{FF0000}Servicio";}
+		if(PlayersData[i][AdminOn] == 0) { estado = "{868686}Off Duty";}
+		else if(PlayersData[i][AdminOn] == 1) { estado = "{FF0000}On Duty";}
 		format(ladm, sizeof(ladm), "%s:{FFFFBB} %s {A7A7A7}[%s{A7A7A7}]", rango, RemoveUnderScore(i), estado);
 		SendClientMessage(playerid, -1, ladm);
 		}
-		else if(IsPlayerConnected(i) && PlayersData[i][Admin] == 1)
+		else if(IsPlayerConnected(i) && PlayersData[i][Admin] == 0)
 		{
-		    SendClientMessage(playerid, -1, "{B30000}No hay ningún miembro del Staff disponible.");
+		    SendClientMessage(i, -1, "{B30000}No hay ningún miembro del Staff disponible.");
 		}
-	}
+ }
 	return 1;
 }
 CMD:copyright(playerid, params[])
@@ -1597,12 +1598,9 @@ CMD:duda(playerid, params[])
 			{
 	    		SendClientMessage(i, -1, msg);
 			}
-			else
-			{
-	    		SendClientMessage(i, -1, "{A7A7A7}[Administración]: Haz enviado una duda a la administración, espera que te respondan.");
-			}
-			}
+		}
 	}
+	SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Haz enviado una duda a la administración, espera que te respondan.");
 	return 1;
 }
 CMD:reportar(playerid, params[])
@@ -1895,11 +1893,12 @@ CMD:vida(playerid, params[])
 {
 if(PlayersData[playerid][Admin] >=4)
 {
-	new id, string[126];
-	if(sscanf(params, "u", id))
-	 	return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Vida [ID]");
-	SetPlayerHealth(id, 100);
-	format(string, sizeof(string), "{A7A7A7}[Administración]: Le haz dado vida a %s .", RemoveUnderScore(id));
+	new string[126], Float:vida;
+	if(sscanf(params, "ud", params[0], params[1]))
+	 	return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Vida [ID] [Cantidad]");
+	vida= params[1];
+	SetPlayerHealth(params[0], vida);
+	format(string, sizeof(string), "{A7A7A7}[Administración]: Le haz dado vida a %s .", RemoveUnderScore(params[0]));
  	SendClientMessage(playerid, -1, string);
 }
 else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
@@ -2027,8 +2026,7 @@ return 1;
 }
 CMD:adminon(playerid, params[])
 {
-	new Float: PPos[3], skin, Float:vida;
-	skin=(PlayersData[playerid][Skin]);
+	new Float: PPos[3], Float:vida;
 	GetPlayerHealth(playerid, vida);
 	if(PlayersData[playerid][Admin] >=1)
 	{
@@ -2037,7 +2035,6 @@ CMD:adminon(playerid, params[])
 	        PlayersData[playerid][AdminOn] = 1;
 	        SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Ahora estás OnDuty.");
 	        SetPlayerHealth(playerid, 496700);
-			SetPlayerSkin(playerid, 0);
 	        SetPlayerColor(playerid, AdminsRangosColors[PlayersData[playerid][Admin]-1]);
 		}
 		else if(PlayersData[playerid][AdminOn]==1)
@@ -2052,7 +2049,6 @@ CMD:adminon(playerid, params[])
 			SetPlayerColor(playerid,-1);
 			}
 			PlayersData[playerid][AdminOn] = 0;
-			SetPlayerSkin(playerid, skin);
 			SetPlayerHealth(playerid, vida);
 			GetPlayerPos(playerid, PPos[0], PPos[1], PPos[2]);
 			SetPlayerPos(playerid, PPos[0], PPos[1], PPos[2]+2);
@@ -2345,7 +2341,10 @@ CMD:msgex(playerid, params[])
 {
 	if(PlayersData[playerid][Admin] >=6)
 	{
-	    GameTextForPlayer(playerid, params,3000,3);
+	    for(new i=0; i< MAX_PLAYERS; i++)
+	    {
+	    GameTextForPlayer(i, params,3000,3);
+	    }
  	}
  	else
  	{
