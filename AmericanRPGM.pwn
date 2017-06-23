@@ -56,6 +56,7 @@
 new bool:Intentar[MAX_PLAYERS];
 new MotorAuto[MAX_VEHICLES];
 new bool:Spectador[MAX_PLAYERS];
+new Hora, Minuto;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- TEXTDRAWS -]===--- */
 new Text:Textdraw0;
@@ -287,6 +288,18 @@ stock RemoveUnderScore(playerid)
     }
     return name;
 }
+stock CargarHora()
+{
+	gettime(Hora, Minuto);
+	SetWorldTime(Hora);
+	for(new i; i < GetMaxPlayers(); i++)
+	{
+		if(IsPlayerConnected(i) && GetPlayerState(i) != PLAYER_STATE_NONE)
+		{
+			SetPlayerTime(i,Hora,Minuto);
+		}
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- FACCIONES -]===--- */
 /* ---===[-FIN FACCIONES-]===---*/
@@ -479,6 +492,8 @@ public OnPlayerConnect(playerid)
     PlayersDataOnline[playerid][Mundo] = 0;
     Intentar[playerid] = true;
     SetPlayerScore(playerid, PlayersData[playerid][Nivel]);
+    gettime(Hora, Minuto);
+    SetPlayerTime(playerid,Hora,Minuto);
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -514,6 +529,8 @@ public OnPlayerSpawn(playerid)
 	}
     OnPlayerDeathEx(playerid);
     SpawnRegisterOrLogin(playerid);
+    gettime(Hora, Minuto);
+    SetPlayerTime(playerid,Hora,Minuto);
     TextDrawHideForPlayer(playerid, Textdraw0);
     TextDrawHideForPlayer(playerid, Textdraw1);
     TextDrawHideForPlayer(playerid, Textdraw2);
@@ -1006,7 +1023,9 @@ public OnGameModeInit()
     EnableStuntBonusForAll(0);
     ShowPlayerMarkers(0);
     UsePlayerPedAnims();
+    CargarHora();
     SetTimer("PayDay", 3600000, true);
+    SetTimer("CargarHora",1000*60,1);
     
 	Textdraw0 = TextDrawCreate(657.000000, 1.499963, "usebox");
 	TextDrawLetterSize(Textdraw0, 0.000000, 13.390736);
@@ -2403,6 +2422,15 @@ CMD:forzarpd(playerid, params[])
 	{
 		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
 	}
+	return 1;
+}
+
+CMD:hora(playerid, params[])
+{
+	new msg[150];
+	gettime(Hora, Minuto);
+	format(msg, sizeof(msg), "Hora: %d, Minutos %d", Hora, Minuto);
+	SendClientMessage(playerid, -1, msg);
 	return 1;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
