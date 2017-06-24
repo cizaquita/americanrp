@@ -12,6 +12,7 @@
 #include <YSI\y_ini>
 #include <YSI/y_iterate>
 #include <sscanf2>
+#include <a_mysql>
 /* ---===[- Macros & Demas -]===--- */
 #define Server_Logo      "{005EF6}» {FFFFFF}Bienvenido a la comunidad de {484EFA}American{FFFFFF} Role{FFFF00}Play!"
 #define Server_Version   "v1.1"
@@ -52,11 +53,17 @@
 #define strcmpEx(%0,%1) 				strcmp(%0, %1, true) == 0
 #define CMD_LOG  true
 #define HOLDING(%0)
+//Conexión Mysql
+#define MySQL_Servidor "localhost"
+#define MySQL_Usuario "root"
+#define MySQL_BD "db"
+#define MySQL_Clave ""
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 new bool:Intentar[MAX_PLAYERS];
 new MotorAuto[MAX_VEHICLES];
 new bool:Spectador[MAX_PLAYERS];
 new Hora, Minuto;
+new Conecction;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- TEXTDRAWS -]===--- */
 new Text:Textdraw0;
@@ -87,33 +94,38 @@ new AdminsRangosColors[9] =
 /* ---===[- Variables & Arrays -]===--- */
 enum PlayerData
 {
-	Admin, //1 - 7
-	Vip, //0 - No, 1 - Si
-	Password[MAX_TEXTOS_CORTOS], //Long - 30
-	Float:Pos[4], // X, Y, Z, VW
-	Float:Vida, //80 - Max
-	Float:Chaleco, //80 - Max
-	Nivel, //Inicial - 1
-	Experiencia, //Inicial - 0
-	ExperienciaRe, //Experiencia requerida Nivel+4
-	Faccion, //0 - 7 DESACTIVADO ACTUAL.
-	Rango, //1 - 6 DESACTIVADO ACTUAL.
-	Interior, //VW
-	Skin, //31-Mujer, 35-Hombre
-	Acento, //En Proceso.
-	Dinero, //Inicial - 1200
-	World, //0
-	Armas[13], //Proceso...
-	Municiones[13], //Proceso...
-	AdminOn, // 1-Activado , 0-Desactivado
-	Ciudad, //1-Los Santos[x], 2-San Fierro, 3-Las Venturas[x]
-	Sexo, //1-Mujer, 2-Hombre
-	Relacion[MAX_TEXTOS_LARGOS], //Casado con:_
-	Estado, //0-Soltero, 1-Casado
-	Edad, // >18, <80
-	Baneado, //0-No, 1-Sí
-	Warn //Inicial - 0
-};
+	Password[130],
+	Admin,
+	Vip,
+	Nivel,
+	Float:Vida,
+	Float:Chaleco,
+	Float:PosX,
+	Float:PosY
+	Float:PosZ,
+	Float:VW,
+	Dinero,
+	Sexo,
+	Skin,
+	AdminDuty,
+	Faccion,
+	Rango,
+	Interior,
+	Experiencia,
+	Ciudad,
+	Edad,
+	Baneado,
+	Warns,
+	Acento,
+	Estado
+}
+new PlayersData[MAX_PLAYERS][PlayerData],
+	PlayersDataOnline[MAX_PLAYERS][PlayersOnline],
+	bool:Logueado[MAX_PLAYERS],
+	KickReason[MAX_PLAYERS],
+	IntentosLoguear[MAX_PLAYERS]  = MAX_INTENTOS,
+	DIR_CUENTAS[MAX_GUARDADO]    = "/Usuarios/";
+
 enum PlayersOnline
 {
 	Mundo,
@@ -121,14 +133,6 @@ enum PlayersOnline
 	Muerto,
 	MuertoEx
 };
-new PlayersData[MAX_PLAYERS][PlayerData],
-	PlayersDataOnline[MAX_PLAYERS][PlayersOnline],
-	bool:Logueado[MAX_PLAYERS],
-	KickReason[MAX_PLAYERS],
-//	Sonido[MAX_PLAYERS],
-	IntentosLoguear[MAX_PLAYERS]  = MAX_INTENTOS,
-	DIR_CUENTAS[MAX_GUARDADO]    = "/Usuarios/";
-
 new COLOR_MESSAGES[5] =
 {
     0x93A6FFFF,      // 0 - COLOR ERROR
@@ -326,6 +330,93 @@ forward EncenderMotor(playerid);
 forward ApagarMotor(playerid);
 forward IntentarTimer(playerid);
 forward PayDay(playerid);
+forward OnQueryError(errorid, error[], callback[], query[], connectionHandle);
+forward CheckPlayer(playerid);
+forward OnQueryFinish(resultid, extraid, ConnectionHandle);
+
+public OnQueryFinish(resultid, extraid, ConnectionHandle)
+{
+    new Rows, Field, string[300];
+    if(resultid != 0)
+    {
+        cache_get_data(Rows, Field);
+    }
+    switch(resultid)
+    {
+        case 1:
+        {
+            if(Rows == 1)
+            {
+                new content[20];
+                cache_get_field_content(0, "Password", PlayersData[extraid][pPassword]);
+                cache_get_field_content(0, "Nivel", content); PlayersData[extraid][Nivel] = strval(content);
+                cache_get_field_content(0, "Vida", content); PlayersData[extraid][Vida] = floatstr(content);
+                cache_get_field_content(0, "Chaleco", content); PlayersData[extraid][Chaleco] = floatstr(content);
+                cache_get_field_content(0, "PosX", content); PlayersData[extraid][PosX] = floatstr(content);
+                cache_get_field_content(0, "PosY", content); PlayersData[extraid][PosY] = floatstr(content);
+                cache_get_field_content(0, "PosZ", content); PlayersData[extraid][PosZ] = floatstr(content);
+                cache_get_field_content(0, "VW", content); PlayersData[extraid][VW] = floatstr(content);
+                cache_get_field_content(0, "Admin", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Vip", content); PlayersData[extraid][Vip] = strval(content);
+                cache_get_field_content(0, "Dinero", content); PlayersData[extraid][Dinero] = strval(content);
+                cache_get_field_content(0, "Sexo", content); PlayersData[extraid][Sexo] = strval(content);
+                cache_get_field_content(0, "Skin", content); PlayersData[extraid][Skin] = strval(content);
+                cache_get_field_content(0, "AdminDuty", content); PlayersData[extraid][AdminDuty] = strval(content);
+                cache_get_field_content(0, "Faccion", content); PlayersData[extraid][Faccion] = strval(content);
+                cache_get_field_content(0, "Rango", content); PlayersData[extraid][Rango] = strval(content);
+                cache_get_field_content(0, "Interior", content); PlayersData[extraid][Interior] = strval(content);
+                cache_get_field_content(0, "Experiencia", content); PlayersData[extraid][Experiencia] = strval(content);
+                cache_get_field_content(0, "Ciudad", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Edad", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Baneado", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Warns", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Acento", content); PlayersData[extraid][Admin] = strval(content);
+                cache_get_field_content(0, "Estado", content); PlayersData[extraid][Estado] = strval(content);
+                SetSpawnInfo(extraid,0,0, PlayersData[extraid][pPosx],PlayersData[extraid][pPosy],PlayersData[extraid][pPosz],0.0,0,0,0,0,0,0);
+                SetPlayerScore(extraid,  PlayersData[extraid][Nivel]);
+                SetPlayerArmour(extraid, PlayersData[extraid][Chaleco]);
+                SetPlayerHealth(extraid, PlayersData[extraid][Vida]);
+				GivePlayerMoney(extraid, PlayersData[extraid][Dinero]);
+            }
+            else if(!Rows)
+            {
+				//
+            }
+        }
+        case 2:
+        {
+            if(Rows == 1)
+            {
+                new pName[24]; GetPlayerName(extraid, pName, 24);
+                cache_get_field_content(0, "Password", PlayersData[extraid][Password]);
+                format(string, sizeof(string), "{FFFFFF}Bienvenido nuevamente %s\n\n{FFFFFF}Por favor ingrese su contraseña para ingresar en {484EFA}American{FFFFFF} Role{FFFF00}Play", pName);
+                ShowPlayerDialog(extraid, LOGIN, DIALOG_STYLE_PASSWORD,"Panel » {005EF6}Logueo",string,"Ingresar","Salir");
+            }
+            else if(!Rows)
+            {
+                new pName[24]; GetPlayerName(extraid, pName, 24);
+                format(string, sizeof(string), "{FFFFFF}Bienvenido %s a la comunidad de {484EFA}American{FFFFFF} Role{FFFF00}Play\n\n\t{FFFFFF}Por favor ingrese una contraseña y presione 'Continuar'", pName);
+                ShowPlayerDialog(extraid, REGISTRO, DIALOG_STYLE_PASSWORD,"Panel » {005EF6}Registro",string,"Registrarse","Salir");
+            }
+        }
+    }
+    return 1;
+}
+
+public CheckPlayer(playerid)
+{
+    new pName[24], Query[256];
+    GetPlayerName(playerid, pName, 24);
+    format(Query, sizeof(Query), "SELECT * FROM `usuarios` WHERE Nombre='%s'", pName);
+    mysql_function_query(Conecction, Query, true, "OnQueryFinish", "ii",2, playerid);
+    return 1;
+}
+
+public OnQueryError(errorid, error[], callback[], query[], connectionHandle )
+{
+  printf("[ERROR] ID: %d - Error: %s - Callback - %s - Query: %s", errorid, error, callback, query);
+	return 1;
+}
 
 public IntentarTimer(playerid)
 {
@@ -495,6 +586,7 @@ public OnPlayerConnect(playerid)
     gettime(Hora, Minuto);
     SetPlayerTime(playerid,Hora,Minuto);
     SetPlayerColor(playerid, 0x454545FF);
+    CheckPlayer(playerid);
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -1001,6 +1093,20 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 }
 public OnGameModeInit()
 {
+	//Conexión MYSQL
+	printf("Iniciando conexión MySQL: (Servidor: '%s', Usuario: '%s', Clave: '%s', Base de Datos: '%s')", MySQL_Servidor, MySQL_Usuario, MySQL_Clave, MySQL_BD);
+    Conecction = mysql_connect(MySQL_Servidor, MySQL_Usuario, MySQL_BD,MySQL_Clave);
+ 	if(mysql_ping() == 1)
+	{
+		printf("Conexión a la base de datos realizada correctamente.");
+	}
+	else
+	{
+	    print("Conexión a la base de datos no realizada.");
+		mysql_close();
+		SendRconCommand("exit");
+	}
+	//
 	SetGameModeText(Server_GameText);
 	new rcon[80];
 	format(rcon, sizeof(rcon), "hostname %s", Server_Nombre);
