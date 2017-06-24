@@ -96,11 +96,8 @@ enum PlayerData
 	Nivel, //Inicial - 1
 	Experiencia, //Inicial - 0
 	ExperienciaRe, //Experiencia requerida Nivel+4
-	Movil, //0-No tiene, 1-Si tiene
-	Numero, //Numero de móvil
-	Saldo, //Saldo Inicial 1200
-	Faccion, //0 - 10 DESACTIVADO ACTUAL.
-	Rango, //0 - 7 DESACTIVADO ACTUAL.
+	Faccion, //0 - 7 DESACTIVADO ACTUAL.
+	Rango, //1 - 6 DESACTIVADO ACTUAL.
 	Interior, //VW
 	Skin, //31-Mujer, 35-Hombre
 	Acento, //En Proceso.
@@ -1453,7 +1450,7 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
   		SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Pasaporte [ID]");
     	return 1;
 	}
-	new pID, string[300], ciudad[15], sexo[10], edad, trabajo[20], cargo[15], relacion[30];
+	new pID, string[300], ciudad[15], sexo[10], edad, trabajo[50], cargo[25], relacion[30];
 	pID=strval(params);
 	if(!IsPlayerConnected(pID)) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Jugador no conectado.");
     if(ProxDetectorS(5.0, playerid, pID) || playerid == pID)
@@ -1464,8 +1461,55 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
 	if(PlayersData[playerid][Sexo] == 1)	{   sexo="Femenino";}
 	if(PlayersData[playerid][Sexo] == 2) {   sexo="Masculino";}
 	edad = PlayersData[playerid][Edad];
-	trabajo= "Ninguno";
-	cargo= "Ninguno";
+	if(PlayersData[playerid][Faccion] == 0) {   trabajo= "Ninguno"; cargo= "Ninguno";}
+	if(PlayersData[playerid][Faccion] == 1) {   trabajo= "Gobierno";}
+	if(PlayersData[playerid][Faccion] == 2) {   trabajo= "LSPD";}
+	if(PlayersData[playerid][Faccion] == 3) {   trabajo= "SAMD";}
+	if(PlayersData[playerid][Faccion] == 4) {   trabajo= "Taller LS";}
+	if(PlayersData[playerid][Faccion] == 5) {   trabajo= "CNN";}
+	if(PlayersData[playerid][Faccion] == 6) {   trabajo= "Desconocido";}
+	if(PlayersData[playerid][Faccion] == 7) {   trabajo= "Desconocido";}
+	//RANGOS//
+	//Gobierno
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 1) {   cargo= "Gobernador";}
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 2) {   cargo= "ViceGobernador";}
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 3) {   cargo= "Secretario";}
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 4) {   cargo= "Concejal";}
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 5) {   cargo= "Asistente";}
+	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 6) {   cargo= "Seguridad";}
+	//LSPD
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 1) {   cargo= "Comisario";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Comisario";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 3) {   cargo= "Capitán";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 4) {   cargo= "Teniente";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 5) {   cargo= "Sargento";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 6) {   cargo= "Cabo";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 7) {   cargo= "Oficial";}
+	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 8) {   cargo= "Cadete";}
+	//SAMD
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 1) {   cargo= "Director";}
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Director";}
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 3) {   cargo= "Jefe de Departamento";}
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 4) {   cargo= "Médico";}
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 5) {   cargo= "Bomberos";}
+	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 6) {   cargo= "Paramédico";}
+	//Taller LS
+	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 1) {   cargo= "Empresario";}
+	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 2) {   cargo= "Encargado";}
+	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 3) {   cargo= "Maquinista";}
+	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 4) {   cargo= "Mecánico";}
+	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 5) {   cargo= "Ayudante";}
+	//CNN
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 1) {   cargo= "Director";}
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Director";}
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 3) {   cargo= "Supervisor";}
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 4) {   cargo= "Reportero";}
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 5) {   cargo= "Camarógrafo";}
+	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 6) {   cargo= "Asistente";}
+	//Mafia
+	if(PlayersData[playerid][Faccion] == 6) {   cargo= "Desconocido";}
+	//SOA
+	if(PlayersData[playerid][Faccion] == 7) {   cargo= "Desconocido";}
 	relacion= "Soltero";
     if (playerid == pID)
     {
@@ -1478,7 +1522,7 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
 	format(string, sizeof(string), "{FF8040}Nombre: {FFFFFF}%s\n{FF8040}Sexo: {FFFFFF}%s\n{FF8040}Edad: {FFFFFF}%d\n{FF8040}Residencia: {FFFFFF}%s\n{FF8040}Trabajo: {FFFFFF}%s\n{FF8040}Cargo: {FFFFFF}%s\n{FF8040}Relación: {FFFFFF}%s", RemoveUnderScore(playerid), sexo, edad, ciudad, trabajo, cargo, relacion);
 	ShowPlayerDialog(pID, DIALOG_PASAPORTE, DIALOG_STYLE_MSGBOX, "\t{C0C0C0}....::{0080FF}San {FF0000}Andreas {FF8000}Passport{C0C0C0}::....", string, "Aceptar","");
 	SendClientMessageEx(pID, -1, "{48A4FF}[Información]: %s te ha enseñado su pasaporte", RemoveUnderScore(playerid));
-	SendClientMessageEx(playerid, -1, "{48A4FF}[Información]: Le haz enseñado tu pasaporte a %s", RemoveUnderScore(playerid));
+	SendClientMessageEx(playerid, -1, "{48A4FF}[Información]: Le haz enseñado tu pasaporte a %s", RemoveUnderScore(pID));
 	}
 	return 1;
     }
@@ -2429,3 +2473,65 @@ CMD:hora(playerid, params[])
 	return 1;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+CMD:faccion(playerid, params[])
+{
+    new str[128], nFacc[50];
+    if(PlayersData[playerid][Admin] < 6)
+	{
+		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	}
+    if(sscanf(params,"ui",params[0],params[1]))
+	{
+ 		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Facción [ID] [Facción ID]");
+	}
+    if(!IsPlayerConnected(params[0]))
+	{
+		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Usuario no conectado");
+	}
+	if(params[1] >7)
+	{
+	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Esa no es una ID de Facción válida.");
+	}
+    PlayersData[params[0]][Faccion] = params[1];
+    PlayersData[params[0]][Rango] = 1;
+	if(params[1] == 1){ nFacc=	"Gobierno";}
+	if(params[1] == 2){ nFacc=	"LSPD";}
+	if(params[1] == 3){ nFacc=	"SAMD";}
+	if(params[1] == 4){ nFacc=	"Taller LS";}
+	if(params[1] == 5){ nFacc=	"CNN";}
+	if(params[1] == 6){ nFacc=	"Mafia Rusa";}
+	if(params[1] == 7){ nFacc=	"SOA";}
+    format(str, sizeof(str), "{48A4FF}[Información]: El administrador %s te nombro líder de la facción %s",RemoveUnderScore(playerid), nFacc);
+    SendClientMessage(params[0], -1, str);
+    format(str, sizeof(str), "{48A4FF}[Información]: Nombraste líder de %s a %s", nFacc, RemoveUnderScore(params[0]));
+    SendClientMessage(playerid, -1, str);
+    return 1;
+}
+CMD:rango(playerid, params[])
+{
+    new str[128], rango[25], r;
+    if(PlayersData[playerid][Rango] >1)
+	{
+		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	}
+    if(sscanf(params,"ui",params[0],params[1]))
+	{
+ 		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Rango [ID] [Rango ID]");
+	}
+    if(!IsPlayerConnected(params[0]))
+	{
+		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Usuario no conectado");
+	}
+	if(params[1] >7)
+	{
+	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Esa no es una ID de Rango Válida.");
+	}
+	rango="Prueba";
+	r= (params[1]);
+    PlayersData[params[0]][Rango] = r;
+    format(str, sizeof(str), "{48A4FF}[Información]: El líder %s te asignó el rango %s",RemoveUnderScore(playerid), rango);
+    SendClientMessage(params[0], -1, str);
+    format(str, sizeof(str), "{48A4FF}[Información]: Asignaste el rango %s a %s", rango, RemoveUnderScore(params[0]));
+    SendClientMessage(playerid, -1, str);
+    return 1;
+}
