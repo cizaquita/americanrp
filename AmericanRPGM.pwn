@@ -38,7 +38,6 @@
 #define MAX_INTENTOS     		            (3)
 #define MAX_PLAYER_PASS                     (50)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 #define DIALOG_REGISTRO   (1)
 #define DIALOG_LOGUEO     (2)
 #define DIALOG_SEXO       (3)
@@ -63,6 +62,7 @@ new MotorAuto[MAX_VEHICLES];
 new bool:Spectador[MAX_PLAYERS];
 new Hora, Minuto;
 new AntiFloodZ[MAX_PLAYERS];
+new TiempoAfk[MAX_PLAYERS];
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- TEXTDRAWS -]===--- */
 new Text:Textdraw0;
@@ -77,6 +77,7 @@ new Text:Textdraw8;
 new Text:Textdraw9;
 new Text:Textdraw10;
 new Text:Textdraw11;
+new Text:Textdraw12;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- COLORES -]===--- */
 new AdminsRangosColors[9] =
@@ -134,7 +135,6 @@ new PlayersData[MAX_PLAYERS][PlayerData],
 //	Sonido[MAX_PLAYERS],
 	IntentosLoguear[MAX_PLAYERS]  = MAX_INTENTOS,
 	DIR_CUENTAS[MAX_GUARDADO]    = "/Usuarios/";
-
 new COLOR_MESSAGES[5] =
 {
     0x93A6FFFF,      // 0 - COLOR ERROR
@@ -144,7 +144,6 @@ new COLOR_MESSAGES[5] =
     0xFFFFFFFF       // 4 - Entorno
 };
 /* ---===[- Funciones & Demas -]===--- */
-
 stock SendClientMessageEx(playerid, color, const text[], {Float, _}:...)
 {
 	static
@@ -333,6 +332,20 @@ forward ApagarMotor(playerid);
 forward IntentarTimer(playerid);
 forward PayDay(playerid);
 forward AntiFlood(playerid);
+forward Clock(playerid);
+
+public Clock(playerid)
+{
+	new string[256];
+	new hour, minute, second;
+ 	gettime(hour,minute,second);
+    format(string, sizeof(string), "%d:%d:%d", hour, minute, second);
+	TextDrawSetString(Text:Textdraw9, string);
+	if (minute == 59)
+	{
+	    PayDay(playerid);
+	}
+}
 
 public AntiFlood(playerid)
     {
@@ -506,6 +519,7 @@ public OnPlayerConnect(playerid)
     gettime(Hora, Minuto);
     SetPlayerTime(playerid,Hora,Minuto);
     SetPlayerColor(playerid, 0x454545FF);
+    TiempoAfk[playerid] = 0;
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -515,6 +529,9 @@ public OnPlayerConnect(playerid)
     TextDrawShowForPlayer(playerid, Textdraw6);
     TextDrawShowForPlayer(playerid, Textdraw7);
     TextDrawShowForPlayer(playerid, Textdraw8);
+    TextDrawShowForPlayer(playerid, Textdraw10);
+    TextDrawShowForPlayer(playerid, Textdraw11);
+    TextDrawShowForPlayer(playerid, Textdraw12);
 	return 1;
 }
 
@@ -548,13 +565,11 @@ public OnPlayerSpawn(playerid)
     TextDrawHideForPlayer(playerid, Textdraw2);
     TextDrawHideForPlayer(playerid, Textdraw3);
     TextDrawHideForPlayer(playerid, Textdraw4);
-    TextDrawHideForPlayer(playerid, Textdraw5);
-    TextDrawHideForPlayer(playerid, Textdraw6);
-    TextDrawHideForPlayer(playerid, Textdraw7);
     TextDrawHideForPlayer(playerid, Textdraw8);
     TextDrawShowForPlayer(playerid, Textdraw9);
-    TextDrawShowForPlayer(playerid, Textdraw10);
-    TextDrawShowForPlayer(playerid, Textdraw11);
+    TextDrawHideForPlayer(playerid, Textdraw10);
+    TextDrawHideForPlayer(playerid, Textdraw11);
+    TextDrawHideForPlayer(playerid, Textdraw12);
 	return 1;
 }
 public OnPlayerDisconnect(playerid, reason)
@@ -589,7 +604,7 @@ public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 	{
 		if(IsPlayerInAnyVehicle(playerid))
 		{
-		if(AntiFloodZ[playerid] == 1) return SendClientMessageEx(playerid, -1, "%sEspera 10 segundos", InfoMsg);
+		if(AntiFloodZ[playerid] == 1) return SendClientMessageEx(playerid, -1, "%sEspera 5 segundos", InfoMsg);
 		if(MotorAuto[IDAuto] == 0)
 		{
 			SetTimerEx("EncenderMotor", 500, false, "d", playerid);
@@ -623,7 +638,7 @@ public EncenderMotor(playerid)
             format(string, sizeof(string), "**Vehículo encendido [ID:%d]", playerid);
             DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
             AntiFloodZ[playerid] = 1;
-            SetTimerEx("AntiFlood", 10000, false, "d", playerid);
+            SetTimerEx("AntiFlood", 5000, false, "d", playerid);
     }
 public ApagarMotor(playerid)
     {
@@ -637,8 +652,7 @@ public ApagarMotor(playerid)
         format(string, sizeof(string), "**Vehículo apagado [ID:%d]", playerid);
         DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
         AntiFloodZ[playerid] = 1;
-        SetTimerEx("AntiFlood", 10000, false, "d", playerid);
-    	DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+        SetTimerEx("AntiFlood", 5000, false, "d", playerid);
     }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -653,14 +667,14 @@ public OnVehicleDeath(vehicleid, killerid)
 }
 public OnPlayerEnterVehicle(playerid, vehicleid, ispassenger)
 {
-	if (GetPlayerVehicleSeat(playerid)==0){
+	if (GetPlayerVehicleSeat(playerid)==1){
 	if(MotorAuto[vehicleid] == 0)
 	{
-		SendClientMessage(playerid,0xFFFFFFFF,"{FF4D53}[Info]: Este coche está apagado! presiona Alt para encenderlo.");
+		SendClientMessageEx(playerid, -1,"%sEste coche está apagado! presiona Alt para encenderlo.", InfoMsg);
 	}
-	if(MotorAuto[vehicleid] == 1)
+	else if(MotorAuto[vehicleid] == 1)
 	{
-		SendClientMessage(playerid,0xFFFFFFFF,"{FF4D53}[Info]: Este coche está encendido! presiona Alt para apagarlo.");
+		SendClientMessageEx(playerid,-1,"%sEste coche está encendido! presiona Alt para apagarlo.", InfoMsg);
 	}
 	}
  	return 1;
@@ -940,7 +954,28 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 					    ShowPlayerDialog(playerid, DIALOG_CIUDAD, DIALOG_STYLE_LIST, "{005EF6}Registro » Origen", MsgCityText, "Continuar", "");
 					    return 1;
 				    }
-				    default:
+				    case 1:
+				    {
+				        new MsgCityText[MAX_TEXT_CHAT];
+				        PlayersData[playerid][Ciudad] = 1;
+				        format(MsgCityText, sizeof(MsgCityText), "{484EFA}American{FFFFFF} Role{FFFF00}Play {FFFFFF}» Bien ahora sabemos tu ciudad natal, viviras en {8C8C8C}Los Santos{FFFFFF}.");
+						return 1;
+					}
+					case 2:
+					{
+				        new MsgCityText[MAX_TEXT_CHAT];
+				        PlayersData[playerid][Ciudad] = 2;
+				        format(MsgCityText, sizeof(MsgCityText), "{484EFA}American{FFFFFF} Role{FFFF00}Play {FFFFFF}» Bien ahora sabemos tu ciudad natal, viviras en {8C8C8C}San Fierro{FFFFFF}.");
+						return 1;
+					}
+					case 3:
+					{
+				        new MsgCityText[MAX_TEXT_CHAT];
+				        PlayersData[playerid][Ciudad] = 3;
+				        format(MsgCityText, sizeof(MsgCityText), "{484EFA}American{FFFFFF} Role{FFFF00}Play {FFFFFF}» Bien ahora sabemos tu ciudad natal, viviras en {8C8C8C}Las Venturas{FFFFFF}.");
+						return 1;
+					}
+					default:
 				    {
 				        new MsgCityText[MAX_TEXT_CHAT];
 				        PlayersData[playerid][Ciudad] = 1;
@@ -1040,9 +1075,18 @@ public OnGameModeInit()
     ShowPlayerMarkers(0);
     UsePlayerPedAnims();
     CargarHora();
-    SetTimer("PayDay", 3600000, true);
     SetTimer("CargarHora",1000*60,1);
-    
+    SetTimer("Clock", 1000, 1);
+    SetTimer("Check1s", 1000, 1);
+    Textdraw9 = TextDrawCreate(551.000000,23.000000,"--");
+    TextDrawAlignment(Textdraw9,0);
+    TextDrawBackgroundColor(Textdraw9,0x000000FF);
+    TextDrawLetterSize(Textdraw9,0.399999,2.000000);
+    TextDrawColor(Textdraw9,0xFFFFFFFF);
+    TextDrawSetOutline(Textdraw9,1);
+    TextDrawSetProportional(Textdraw9,1);
+    TextDrawSetShadow(Textdraw9,1);
+
 	Textdraw0 = TextDrawCreate(657.000000, 1.499963, "usebox");
 	TextDrawLetterSize(Textdraw0, 0.000000, 13.390736);
 	TextDrawTextSize(Textdraw0, -2.000000, 0.000000);
@@ -1097,30 +1141,30 @@ public OnGameModeInit()
 	TextDrawFont(Textdraw4, 1);
 	TextDrawSetProportional(Textdraw4, 1);
 
-	Textdraw5 = TextDrawCreate(150.500000, 36.711116, "American");
-	TextDrawLetterSize(Textdraw5, 0.920000, 5.053334);
-	TextDrawAlignment(Textdraw5, 1);
-	TextDrawColor(Textdraw5, 41215);
-	TextDrawSetShadow(Textdraw5, 3);
+	Textdraw5 = TextDrawCreate(38.418716, 425.249877, "GreatCity");
+	TextDrawLetterSize(Textdraw5, 0.449999, 1.600000);
+	TextDrawAlignment(Textdraw5, 2);
+	TextDrawColor(Textdraw5, 0xFD0013FF);
+	TextDrawSetShadow(Textdraw5, 2);
 	TextDrawSetOutline(Textdraw5, 0);
 	TextDrawBackgroundColor(Textdraw5, 51);
 	TextDrawFont(Textdraw5, 1);
 	TextDrawSetProportional(Textdraw5, 1);
 
-	Textdraw6 = TextDrawCreate(300.000000, 60.977748, "Role");
-	TextDrawLetterSize(Textdraw6, 0.824998, 4.462223);
+	Textdraw6 = TextDrawCreate(79.648590, 425.249786, "Role");
+	TextDrawLetterSize(Textdraw6, 0.449999, 1.600000);
 	TextDrawAlignment(Textdraw6, 1);
 	TextDrawColor(Textdraw6, -1);
-	TextDrawSetShadow(Textdraw6, 5);
+	TextDrawSetShadow(Textdraw6, 2);
 	TextDrawSetOutline(Textdraw6, 0);
 	TextDrawBackgroundColor(Textdraw6, 51);
 	TextDrawFont(Textdraw6, 1);
 	TextDrawSetProportional(Textdraw6, 1);
 
-	Textdraw7 = TextDrawCreate(361.500000, 60.355552, "Play");
-	TextDrawLetterSize(Textdraw7, 0.779999, 4.711108);
+	Textdraw7 = TextDrawCreate(112.445068, 425.833343, "Play");
+	TextDrawLetterSize(Textdraw7, 0.449999, 1.600000);
 	TextDrawAlignment(Textdraw7, 1);
-	TextDrawColor(Textdraw7, -5963521);
+	TextDrawColor(Textdraw7, 41215);
 	TextDrawSetShadow(Textdraw7, 2);
 	TextDrawSetOutline(Textdraw7, 0);
 	TextDrawBackgroundColor(Textdraw7, 51);
@@ -1137,35 +1181,35 @@ public OnGameModeInit()
 	TextDrawFont(Textdraw8, 2);
 	TextDrawSetProportional(Textdraw8, 1);
 
-	Textdraw9 = TextDrawCreate(496.000000, 4.977838, "American");
-	TextDrawLetterSize(Textdraw9, 0.313500, 1.139555);
-	TextDrawAlignment(Textdraw9, 1);
-	TextDrawColor(Textdraw9, 65535);
-	TextDrawSetShadow(Textdraw9, 0);
-	TextDrawSetOutline(Textdraw9, 1);
-	TextDrawBackgroundColor(Textdraw9, 51);
-	TextDrawFont(Textdraw9, 1);
-	TextDrawSetProportional(Textdraw9, 1);
-
-	Textdraw10 = TextDrawCreate(550.000000, 3.733332, "Role");
-	TextDrawLetterSize(Textdraw10, 0.317000, 1.450666);
+	Textdraw10 = TextDrawCreate(150.500000, 36.711116, "American");
+	TextDrawLetterSize(Textdraw10, 0.920000, 5.053334);
 	TextDrawAlignment(Textdraw10, 1);
-	TextDrawColor(Textdraw10, -1);
-	TextDrawSetShadow(Textdraw10, 0);
-	TextDrawSetOutline(Textdraw10, 1);
+	TextDrawColor(Textdraw10, 41215);
+	TextDrawSetShadow(Textdraw10, 3);
+	TextDrawSetOutline(Textdraw10, 0);
 	TextDrawBackgroundColor(Textdraw10, 51);
 	TextDrawFont(Textdraw10, 1);
 	TextDrawSetProportional(Textdraw10, 1);
 
-	Textdraw11 = TextDrawCreate(573.000000, 4.355556, "Play");
-	TextDrawLetterSize(Textdraw11, 0.317000, 1.450666);
+	Textdraw11 = TextDrawCreate(300.000000, 60.977748, "Role");
+	TextDrawLetterSize(Textdraw11, 0.824998, 4.462223);
 	TextDrawAlignment(Textdraw11, 1);
-	TextDrawColor(Textdraw11, -5963521);
-	TextDrawSetShadow(Textdraw11, 0);
-	TextDrawSetOutline(Textdraw11, 1);
+	TextDrawColor(Textdraw11, -1);
+	TextDrawSetShadow(Textdraw11, 5);
+	TextDrawSetOutline(Textdraw11, 0);
 	TextDrawBackgroundColor(Textdraw11, 51);
 	TextDrawFont(Textdraw11, 1);
 	TextDrawSetProportional(Textdraw11, 1);
+
+	Textdraw12 = TextDrawCreate(361.500000, 60.355552, "Play");
+	TextDrawLetterSize(Textdraw12, 0.779999, 4.711108);
+	TextDrawAlignment(Textdraw12, 1);
+	TextDrawColor(Textdraw12, -5963521);
+	TextDrawSetShadow(Textdraw12, 2);
+	TextDrawSetOutline(Textdraw12, 0);
+	TextDrawBackgroundColor(Textdraw12, 51);
+	TextDrawFont(Textdraw12, 1);
+	TextDrawSetProportional(Textdraw12, 1);
 	return 1;
 }
 public OnGameModeExit()
@@ -1174,11 +1218,217 @@ public OnGameModeExit()
 }
 public RemoverMapeos(playerid)
 {
-return 1;
+    RemoveBuildingForPlayer(playerid, 1290, 1750.1094, 556.5469, 31.0391, 0.25);//PeajeLV
+    RemoveBuildingForPlayer(playerid, 3852, -2614.9063, 686.3672, 28.3594, 0.25);//SFMD-Iglesia
+	RemoveBuildingForPlayer(playerid, 9840, -2567.3438, 516.8281, 30.6250, 0.25);
+	RemoveBuildingForPlayer(playerid, 3876, -2573.2344, 487.3750, 46.7813, 0.25);
+	RemoveBuildingForPlayer(playerid, 3876, -2559.6094, 487.3750, 46.7813, 0.25);
+	RemoveBuildingForPlayer(playerid, 3876, -2542.3828, 506.9219, 46.7813, 0.25);
+	RemoveBuildingForPlayer(playerid, 9885, -2633.9844, 586.9688, 38.3125, 0.25);
+	RemoveBuildingForPlayer(playerid, 3877, -2565.9063, 480.2422, 49.2734, 0.25);
+	RemoveBuildingForPlayer(playerid, 1233, -2595.4531, 573.6875, 15.0703, 0.25);
+	RemoveBuildingForPlayer(playerid, 9834, -2567.3438, 516.8281, 30.6250, 0.25);
+	RemoveBuildingForPlayer(playerid, 9897, -2567.3438, 516.8281, 30.6250, 0.25);
+	RemoveBuildingForPlayer(playerid, 1233, -2556.4453, 557.9766, 15.0703, 0.25);//SFMD-Iglesia
+	RemoveBuildingForPlayer(playerid, 10248, -1680.9922, 683.2344, 19.0469, 0.25);//SFPD
+	RemoveBuildingForPlayer(playerid, 966, -1572.2031, 658.8359, 6.0781, 0.25);
+	RemoveBuildingForPlayer(playerid, 967, -1572.7031, 657.6016, 6.0781, 0.25);//SFPD
+	RemoveBuildingForPlayer(playerid, 1232, -2916.6172, 419.7344, 6.5000, 0.25);//Taller SF
+	RemoveBuildingForPlayer(playerid, 1232, -2880.3828, 419.7344, 6.5000, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, -2911.4219, 422.3516, 4.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1280, -2886.5859, 422.3516, 4.2891, 0.25);
+	RemoveBuildingForPlayer(playerid, 1232, -2993.8125, 457.8672, 6.5000, 0.25);
+	RemoveBuildingForPlayer(playerid, 1232, -2961.8906, 484.0156, 6.5000, 0.25);
+	RemoveBuildingForPlayer(playerid, 1232, -2916.8984, 506.8203, 6.5000, 0.25);//Taller SF
+	RemoveBuildingForPlayer(playerid, 1438, 872.2656, -1346.4141, 12.5313, 0.25);//Callejon Market
+	RemoveBuildingForPlayer(playerid, 1411, 875.4141, -1343.6563, 14.0859, 0.25);//Callejon Market
+    RemoveBuildingForPlayer(playerid, 3593, 2437.4844, -1644.1172, 12.9844, 0.25);//Groove
+	return 1;
 }
 public CargarMapeos()
 {
-return 1;
+	CreateObject(19868, 2863.31567, -889.89563, 9.76510,   0.00000, 0.00000, 89.00000);//PeajeLV
+	CreateObject(19868, 2863.40503, -884.68658, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(19868, 2863.50171, -879.50751, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(19868, 2863.58325, -874.34479, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(19868, 2863.67358, -869.16101, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(19868, 2863.75562, -863.98108, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(19868, 2863.84985, -858.80292, 9.76510,   0.00000, 0.00000, 89.00000);
+	CreateObject(9623, 1741.99036, 530.44128, 29.11610,   -3.50000, 0.00000, -18.50000);
+	CreateObject(1290, 1751.73682, 561.31049, 31.03906,   3.14159, 0.00000, 0.30842);
+	CreateObject(3660, 1747.59753, 549.66809, 27.52960,   0.00000, 3.00000, 72.00000);
+	CreateObject(3660, 1734.83557, 512.18341, 29.72960,   0.00000, 3.00000, 71.00000);
+	CreateObject(966, 1730.93506, 527.86108, 26.83540,   0.00000, 0.00000, -20.00000);
+	CreateObject(966, 1752.83362, 532.88855, 26.05540,   0.00000, 0.00000, 160.00000);
+	CreateObject(966, 1739.34595, 525.00647, 26.79540,   0.00000, 0.00000, -20.00000);
+	CreateObject(966, 1744.01672, 535.94348, 26.05540,   0.00000, 0.00000, 160.00000);
+	CreateObject(968, 1744.02234, 535.94757, 26.64910,   0.00000, -90.00000, 160.00000);
+	CreateObject(968, 1752.90076, 532.84888, 26.64910,   0.00000, -90.00000, 160.00000);
+	CreateObject(968, 1730.90442, 527.86951, 27.41430,   0.00000, -90.00000, -20.00000);
+	CreateObject(968, 1739.30493, 525.02393, 27.41430,   0.00000, -90.00000, -20.00000);
+	CreateObject(3877, 1759.89429, 530.14465, 27.48180,   0.00000, 0.00000, 70.00000);
+	CreateObject(3877, 1760.82947, 529.79053, 27.48180,   0.00000, 0.00000, 70.00000);
+	CreateObject(3877, 1723.85461, 530.56537, 27.68180,   0.00000, 0.00000, 70.00000);
+	CreateObject(3877, 1722.91516, 530.91626, 27.68180,   0.00000, 0.00000, 70.00000);
+	CreateObject(3877, 1721.97668, 531.26764, 27.68180,   0.00000, 0.00000, 70.00000);
+	CreateObject(7415, 1741.41943, 529.98767, 41.11110,   0.00000, 0.00000, 102.00000);
+	CreateObject(7415, 1741.51428, 530.23676, 41.11110,   0.00000, 0.00000, -77.00000);//PeajeLV
+	CreateObject(9897, -2656.42114, 666.78888, 15.48184,   0.00000, 0.00000, -45.06001);//SFMD-Iglesia
+	CreateObject(19978, -2671.39380, 631.90082, 13.43797,   0.00000, 0.00000, 0.00000);
+	CreateObject(11710, -2595.17993, 642.35663, 16.50150,   0.00000, 0.00000, 90.00000);
+	CreateObject(19969, -2578.08643, 573.65387, 13.44100,   0.00000, 0.00000, 90.00000);
+	CreateObject(969, -2562.38330, 581.27142, 13.44080,   0.00000, 0.00000, -180.00000);
+	CreateObject(8674, -2576.30591, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(8674, -2586.60596, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(8674, -2591.74609, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(8674, -2557.08594, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(8674, -2546.80591, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(8674, -2543.16602, 581.25391, 14.93070,   0.00000, 0.00000, 0.00000);
+	CreateObject(19868, -2596.65991, 583.85907, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(969, -2596.64136, 588.14069, 13.44080,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -2596.65991, 599.49908, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -2596.65991, 585.41913, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -2596.65698, 604.76727, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -2596.65698, 610.02728, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -2596.65698, 615.28729, 13.44460,   0.00000, 0.00000, 90.00000);
+	CreateObject(9897, -2561.19214, 652.11481, 9.82900,   0.00000, 0.00000, -45.06000);
+	CreateObject(8406, -2599.27905, 686.97528, 33.46810,   0.00000, 0.00000, -90.00000);
+	CreateObject(9931, -2566.70508, 512.03558, 30.14760,   0.00000, 0.00000, 90.00000);
+	CreateObject(19550, -2550.43628, 499.29391, 13.44740,   0.00000, 0.00000, 0.00000);
+	CreateObject(982, -2536.70288, 540.48590, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(984, -2555.24414, 553.26642, 14.08380,   0.00000, 0.00000, 90.00000);
+	CreateObject(984, -2543.08716, 553.27716, 14.08380,   0.00000, 0.00000, 90.00000);
+	CreateObject(984, -2578.10400, 553.26642, 14.08380,   0.00000, 0.00000, 90.00000);
+	CreateObject(984, -2590.26392, 553.26642, 14.08380,   0.00000, 0.00000, 90.00000);
+	CreateObject(982, -2596.65479, 540.47412, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(982, -2595.62036, 15.82390, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(982, -2596.65479, 514.85413, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(982, -2596.65479, 491.15411, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(983, -2553.52246, 478.98221, 14.14380,   0.00000, 0.00000, -78.58002);
+	CreateObject(982, -2583.85254, 478.35620, 14.13290,   0.00000, 0.00000, -90.00000);
+	CreateObject(982, -2569.49243, 478.35620, 14.13290,   0.00000, 0.00000, -90.00000);
+	CreateObject(983, -2552.02075, 479.29999, 14.14380,   0.00000, 0.00000, -78.58000);
+	CreateObject(983, -2546.21973, 481.73120, 14.14380,   0.00000, 0.00000, -55.83998);
+	CreateObject(983, -2545.20605, 482.43250, 14.14380,   0.00000, 0.00000, -55.84000);
+	CreateObject(983, -2540.76831, 486.87854, 14.14380,   0.00000, 0.00000, -34.09998);
+	CreateObject(983, -2540.06177, 487.92319, 14.14380,   0.00000, 0.00000, -34.09998);
+	CreateObject(983, -2537.63452, 493.69385, 14.14380,   0.00000, 0.00000, -11.59998);
+	CreateObject(983, -2537.31787, 495.25467, 14.14380,   0.00000, 0.00000, -11.59998);
+	CreateObject(982, -2536.70288, 514.86591, 14.13290,   0.00000, 0.00000, 0.00000);
+	CreateObject(983, -2536.69556, 501.58670, 14.14380,   0.00000, 0.00000, 0.00000);//SFMD_IGLESIA
+	CreateObject(969, -1571.68140, 665.89929, 6.17960,   0.00000, 0.00000, -90.00000);//SFPD
+	CreateObject(19447, -1571.81030, 652.39563, 7.61320,   0.00000, 0.00000, 0.00000);
+	CreateObject(7657, -1631.71655, 688.07013, 7.90100,   0.00000, 0.00000, 0.00000);
+	CreateObject(1652, -1628.76172, 688.08331, 10.31500,   0.00000, 0.00000, 0.00000);
+	CreateObject(2008, -1615.71106, 680.21002, 6.18540,   0.00000, 0.00000, -180.00000);
+	CreateObject(2356, -1616.51196, 681.07813, 6.18560,   0.00000, 0.00000, -180.00000);
+	CreateObject(2606, -1613.85583, 681.06140, 8.54588,   0.00000, 0.00000, -87.54000);
+	CreateObject(2612, -1615.92847, 687.86517, 7.93040,   0.00000, 0.00000, 0.00000);
+	CreateObject(18646, -1623.08569, 687.91083, 11.20760,   90.00000, 0.00000, 0.00000);
+	CreateObject(2066, -1618.04675, 687.44232, 6.18380,   0.00000, 0.00000, -2.21998);
+	CreateObject(11730, -1614.03162, 685.21228, 6.18414,   0.00000, 0.00000, -87.18001);
+	CreateObject(18636, -1613.73999, 686.21161, 7.99270,   0.00000, 90.00000, -180.00000);
+	CreateObject(18637, -1614.03870, 687.83942, 6.66730,   78.42000, 0.00000, -45.00000);
+	CreateObject(19969, -1594.57690, 723.41510, 8.98840,   0.00000, 0.00000, -90.00000);
+	CreateObject(968, -1701.48547, 687.60449, 24.67640,   0.00000, 0.00000, -90.00000);
+	CreateObject(19868, -1701.62634, 692.24231, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1701.62634, 697.50232, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1701.62634, 702.76233, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1701.62634, 708.02228, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1701.62634, 713.28229, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1701.62634, 716.14227, 23.87270,   0.00000, 0.00000, 90.00000);
+	CreateObject(19868, -1698.99487, 718.73468, 23.87270,   0.00000, 0.00000, 0.00000);
+	CreateObject(19868, -1697.57495, 718.73468, 23.87270,   0.00000, 0.00000, 0.00000);
+	CreateObject(982, -1682.13586, 718.73700, 24.56750,   0.00000, 0.00000, 90.00000);
+	CreateObject(982, -1656.52185, 718.73877, 24.56750,   0.00000, 0.00000, 90.00000);//SFPD
+	CreateObject(7520, -2901.87622, 430.31241, 4.22770,   0.00000, 0.00000, 180.00000);//Taller SF
+	CreateObject(3624, -2982.89648, 471.09171, 8.53860,   0.00000, 0.00000, -180.00000);
+	CreateObject(11392, -2982.95239, 469.56619, 3.90940,   0.00000, 0.00000, -24.42000);
+	CreateObject(10282, -2991.29541, 471.51489, 4.92660,   0.00000, 0.00000, 90.00000);
+	CreateObject(11401, -2992.49829, 462.87399, 7.65890,   0.00000, 0.00000, 90.00000);
+	CreateObject(1984, -2972.07007, 462.43744, 3.90670,   0.00000, 0.00000, 90.00000);
+	CreateObject(2583, -2973.55054, 459.14011, 5.53570,   0.00000, 0.00000, -180.00000);
+	CreateObject(2700, -2978.39063, 459.14520, 7.38661,   0.00000, 0.00000, 90.00000);
+	CreateObject(1073, -2996.53394, 468.72089, 7.72140,   0.00000, 0.00000, 0.00000);
+	CreateObject(14826, -2973.92041, 479.32224, 4.63160,   0.00000, 0.00000, -180.00000);
+	CreateObject(1139, -2988.90308, 483.09955, 6.99100,   0.00000, 0.00000, -180.00000);
+	CreateObject(1096, -2996.51929, 473.40649, 7.76120,   0.00000, 0.00000, 0.00000);
+	CreateObject(1080, -2996.56201, 471.00391, 8.16190,   0.00000, 0.00000, 0.00000);
+	CreateObject(1650, -2969.70410, 459.31250, 5.42950,   0.00000, 0.00000, -145.20003);
+	CreateObject(2690, -2970.30591, 459.30225, 5.47845,   0.00000, 0.00000, -148.19998);
+	CreateObject(2165, -2978.88086, 480.02490, 3.87740,   0.00000, 0.00000, -180.00000);
+	CreateObject(2161, -2979.15967, 482.98441, 5.10380,   0.00000, 0.00000, 0.00000);
+	CreateObject(1671, -2979.46411, 480.96066, 4.34844,   0.00000, 0.00000, 0.00000);
+	CreateObject(1721, -2979.23242, 478.61581, 3.89600,   0.00000, 0.00000, 0.00000);
+	CreateObject(1146, -2989.15454, 483.13440, 6.07290,   0.00000, 0.00000, 180.00000);
+	CreateObject(1147, -2985.24414, 483.07950, 7.02070,   0.00000, 0.00000, 180.00000);
+	CreateObject(1138, -2985.80078, 483.10959, 6.28310,   0.00000, 0.00000, 180.00000);
+	CreateObject(981, -2947.57715, 485.98535, 3.88446,   0.00000, 0.00000, 0.00000);
+	CreateObject(16360, -2869.74561, 505.38287, 4.00813,   0.00000, 0.00000, 0.00000);
+	CreateObject(7391, -2854.62671, 507.06738, 8.76140,   0.00000, 0.00000, -39.47999);
+	CreateObject(16362, -2903.47998, 503.10861, 6.99890,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2885.44043, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2891.46045, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2897.44019, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2909.44019, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2903.44019, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2915.44019, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(1676, -2921.44019, 503.15790, 5.61360,   0.00000, 0.00000, 90.00000);
+	CreateObject(3096, -2968.97144, 471.10770, 11.31438,   0.00000, 0.00000, -90.00000);
+	CreateObject(10281, -2995.89673, 471.15131, 11.46070,   0.00000, -15.00000, 90.00000);//Taller SF
+	CreateObject(1344, 870.47070, -1364.18445, 13.35540,   0.00000, 0.00000, 179.15990);//Callejon Market
+	CreateObject(1362, 868.09540, -1357.18286, 13.24222,   0.00000, 0.00000, 0.00000);
+	CreateObject(4730, 858.41028, -1356.30054, 20.06916,   0.00000, 0.00000, -187.43980);
+	CreateObject(1728, 868.18622, -1353.41040, 12.58880,   0.00000, 0.00000, 90.12000);
+	CreateObject(1711, 870.92432, -1349.74976, 12.68680,   0.00000, 0.00000, -21.72000);
+	CreateObject(19878, 867.84735, -1344.81860, 12.96570,   0.00000, 127.00000, 98.00000);
+	CreateObject(1433, 870.62512, -1352.36572, 12.91197,   0.00000, 0.00000, 0.00000);
+	CreateObject(1411, 877.12604, -1343.70032, 14.08590,   356.85840, 0.00000, -1.35840);
+	CreateObject(1438, 868.93134, -1345.08606, 12.56420,   0.00000, 0.00000, 0.00000);
+	CreateObject(1349, 879.36023, -1363.74377, 13.17920,   0.00000, 0.00000, -164.16000);
+	CreateObject(1369, 871.61066, -1354.22742, 13.33026,   0.00000, 0.00000, -134.15999);
+	CreateObject(1338, 848.62817, -1361.76782, 13.62075,   0.00000, 30.00000, -143.03990);
+	CreateObject(1414, 870.30255, -1343.96484, 13.85915,   0.00000, 0.00000, 0.00000);
+	CreateObject(1458, 849.94867, -1360.73682, 12.88532,   0.00000, 0.00000, -228.05992);
+	CreateObject(1503, 876.15070, -1346.17468, 12.98085,   0.00000, 0.00000, -1.38002);
+	CreateObject(926, 849.25366, -1360.73486, 13.77554,   0.00000, -20.00000, -287.00000);
+	CreateObject(2676, 865.36102, -1371.31580, 12.66500,   0.00000, 0.00000, 115.68000);
+	CreateObject(2673, 870.53851, -1352.22620, 12.71590,   0.00000, 0.00000, -13.38000);
+	CreateObject(1439, 867.07031, -1370.14587, 12.67320,   0.00000, 0.00000, -89.22000);//Callejon Market
+	CreateObject(3092, 2419.33203, -1660.13354, 20.30020,   0.00000, 0.00000, 87.42000);//Groove
+	CreateObject(19087, 2419.38599, -1660.06116, 23.46920,   0.00000, 0.00000, 0.00000);
+	CreateObject(14467, 2487.57837, -1668.85913, 15.12260,   0.00000, 0.00000, -92.76000);
+	CreateObject(1362, 2423.85229, -1677.85229, 13.38230,   0.00000, 0.00000, 0.00000);
+	CreateObject(1344, 2440.98535, -1692.55103, 13.60450,   0.00000, 0.00000, 148.55989);
+	CreateObject(1327, 2431.87646, -1679.52795, 13.34390,   0.00000, -90.00000, 0.00000);
+	CreateObject(3594, 2429.83984, -1679.41321, 13.92110,   0.00000, 0.00000, -90.00000);
+	CreateObject(17969, 2436.19751, -1680.93396, 13.95310,   0.00000, 0.00000, -90.24000);
+	CreateObject(18660, 2424.68213, -1680.94434, 16.04660,   0.00000, 0.00000, -90.00000);
+	CreateObject(1327, 2427.80029, -1679.38196, 13.34390,   0.00000, -90.00000, 0.00000);
+	CreateObject(2056, 2434.24780, -1680.94067, 14.35272,   0.00000, 0.00000, -181.62010);
+	CreateObject(2051, 2429.95239, -1680.90942, 15.84990,   0.00000, 0.00000, -181.80000);
+	CreateObject(1520, 2432.39063, -1679.08752, 14.19060,   0.00000, 0.00000, -42.00005);
+	CreateObject(1484, 2431.55884, -1678.96375, 14.42443,   4.02000, 30.30000, 3.54000);
+	CreateObject(2049, 2426.73877, -1680.91016, 14.96350,   0.00000, 13.00000, -181.73990);
+	CreateObject(1487, 2429.60571, -1678.77722, 14.70410,   0.00000, 0.00000, -123.47993);
+	CreateObject(1669, 2426.98975, -1678.86597, 14.37690,   0.00000, 0.00000, 31.68000);
+	CreateObject(1551, 2427.89453, -1678.55774, 14.45210,   0.00000, 0.00000, -115.07999);
+	CreateObject(18688, 2423.83887, -1677.84375, 12.50730,   0.00000, 0.00000, 0.00000);
+	CreateObject(18659, 2419.33252, -1659.71240, 24.31130,   0.00000, 0.00000, 0.00000);
+	CreateObject(1728, 2428.58667, -1633.56396, 12.41380,   0.00000, 0.00000, 0.00000);
+	CreateObject(1711, 2427.06543, -1634.43213, 12.42090,   0.00000, 0.00000, 45.00000);
+	CreateObject(3171, 2435.60498, -1632.59949, 12.37890,   0.00000, 0.00000, 45.00000);
+	CreateObject(19997, 2429.63330, -1636.11621, 12.15842,   0.00000, 0.00000, -89.16000);
+	CreateObject(1711, 2431.86768, -1634.23328, 12.42090,   0.00000, 0.00000, -53.87999);
+	CreateObject(1410, 2429.32959, -1629.31726, 13.13630,   3.13670, 0.02600, 0.00000);
+	CreateObject(1410, 2433.98950, -1629.31726, 13.13630,   3.13670, 0.02600, 0.00000);
+	CreateObject(19823, 2429.90918, -1636.02405, 13.00180,   0.00000, 0.00000, -33.30000);
+	CreateObject(3027, 2429.76636, -1635.66113, 13.00000,   90.00000, 0.00000, -77.40000);
+	CreateObject(1665, 2429.30762, -1635.74634, 13.01310,   0.00000, 0.00000, 85.20002);
+	CreateObject(1486, 2429.54932, -1636.14160, 13.15300,   0.00000, 0.00000, 335.04001);
+	CreateObject(19831, 2422.58765, -1638.33154, 12.48460,   0.00000, 0.00000, 90.00000);
+	CreateObject(19812, 2438.56104, -1636.82507, 12.93640,   0.00000, 0.00000, -74.46000);//Groove
+	return 1;
 }
 public PayDay(playerid)
 {
@@ -1186,18 +1436,17 @@ public PayDay(playerid)
     {
         if (IsPlayerConnected(i) && Logueado[i])
         {
-            new msg[100], exp, lvl, expr, string[200], p, cd, d;
+            new msg[100], exp, lvl, expr, string[200], p, d;
             expr= (PlayersData[i][ExperienciaRe]);
             exp= (PlayersData[i][Experiencia]);
             lvl= (PlayersData[i][Nivel]);
             p=250;
             d=PlayersData[i][Dinero]-10;
             GivePlayerMoney(i, p-10);
-			cd=(PlayersData[i][Dinero]-p);
             SendClientMessage(i, -1, "{FBDA8E}|___________________ {008000}Banco{FBDA8E} ___________________|\n");
             format(string, sizeof(string), "{BDF766}Banco: Nuevo Balance: $%d", d);
             SendClientMessage(i, -1, string);
-            format(string, sizeof(string), "{BDF766}Banco: Antiguo Balance: $%d", cd);
+            format(string, sizeof(string), "{BDF766}Banco: Paga: $%d", p);
             SendClientMessage(i, -1, string);
             format(string, sizeof(string), "{BDF766}Banco: Intereses: $10");
             SendClientMessage(i, -1, string);
@@ -1384,7 +1633,6 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
 	}
 	return 1;
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////-----------===============================[ - Comandos - ]===============================-----------//////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1483,55 +1731,8 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
 	if(PlayersData[playerid][Sexo] == 1)	{   sexo="Femenino";}
 	if(PlayersData[playerid][Sexo] == 2) {   sexo="Masculino";}
 	edad = PlayersData[playerid][Edad];
-	if(PlayersData[playerid][Faccion] == 0) {   trabajo= "Ninguno"; cargo= "Ninguno";}
-	if(PlayersData[playerid][Faccion] == 1) {   trabajo= "Gobierno";}
-	if(PlayersData[playerid][Faccion] == 2) {   trabajo= "LSPD";}
-	if(PlayersData[playerid][Faccion] == 3) {   trabajo= "SAMD";}
-	if(PlayersData[playerid][Faccion] == 4) {   trabajo= "Taller LS";}
-	if(PlayersData[playerid][Faccion] == 5) {   trabajo= "CNN";}
-	if(PlayersData[playerid][Faccion] == 6) {   trabajo= "Desconocido";}
-	if(PlayersData[playerid][Faccion] == 7) {   trabajo= "Desconocido";}
-	//RANGOS//
-	//Gobierno
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 1) {   cargo= "Gobernador";}
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 2) {   cargo= "ViceGobernador";}
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 3) {   cargo= "Secretario";}
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 4) {   cargo= "Concejal";}
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 5) {   cargo= "Asistente";}
-	if(PlayersData[playerid][Faccion] == 1 && PlayersData[playerid][Rango] == 6) {   cargo= "Seguridad";}
-	//LSPD
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 1) {   cargo= "Comisario";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Comisario";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 3) {   cargo= "Capitán";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 4) {   cargo= "Teniente";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 5) {   cargo= "Sargento";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 6) {   cargo= "Cabo";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 7) {   cargo= "Oficial";}
-	if(PlayersData[playerid][Faccion] == 2 && PlayersData[playerid][Rango] == 8) {   cargo= "Cadete";}
-	//SAMD
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 1) {   cargo= "Director";}
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Director";}
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 3) {   cargo= "Jefe de Departamento";}
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 4) {   cargo= "Médico";}
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 5) {   cargo= "Bomberos";}
-	if(PlayersData[playerid][Faccion] == 3 && PlayersData[playerid][Rango] == 6) {   cargo= "Paramédico";}
-	//Taller LS
-	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 1) {   cargo= "Empresario";}
-	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 2) {   cargo= "Encargado";}
-	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 3) {   cargo= "Maquinista";}
-	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 4) {   cargo= "Mecánico";}
-	if(PlayersData[playerid][Faccion] == 4 && PlayersData[playerid][Rango] == 5) {   cargo= "Ayudante";}
-	//CNN
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 1) {   cargo= "Director";}
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 2) {   cargo= "Sub Director";}
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 3) {   cargo= "Supervisor";}
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 4) {   cargo= "Reportero";}
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 5) {   cargo= "Camarógrafo";}
-	if(PlayersData[playerid][Faccion] == 5 && PlayersData[playerid][Rango] == 6) {   cargo= "Asistente";}
-	//Mafia
-	if(PlayersData[playerid][Faccion] == 6) {   cargo= "Desconocido";}
-	//SOA
-	if(PlayersData[playerid][Faccion] == 7) {   cargo= "Desconocido";}
+	trabajo= "Ninguno";
+	cargo= "Ninguno";
 	relacion= "Soltero";
     if (playerid == pID)
     {
@@ -1699,7 +1900,7 @@ CMD:cmdstaff(playerid, params[])//COMANDO /CmdStaff
 		if(PlayersData[playerid][Admin] >= 1)
 		{
 	    	SendClientMessage(playerid, -1, "{8E8E8E}.....................................::::{80FFFF}Ayudante{8E8E8E}::::.....................................");
-	    	SendClientMessage(playerid, -1, "{8E8E8E}/CmdStaff - /A [Canal Admin] - /O [Canal General] - /AdminOn - /Spec [ID]");
+	    	SendClientMessage(playerid, -1, "{8E8E8E}/CmdStaff - /A [Canal Admin] - /O [Canal General] - /AdminDuty - /Spec [ID]");
       		SendClientMessage(playerid, -1, "{9DFFFF}*Puedes Espectear a los usuarios.");
 		}
 		if(PlayersData[playerid][Admin] >= 2)
@@ -1723,7 +1924,7 @@ CMD:cmdstaff(playerid, params[])//COMANDO /CmdStaff
 		if(PlayersData[playerid][Admin] >= 5)
 		{
 		    SendClientMessage(playerid, -1, "{8E8E8E}.....................................::::{FF0000}Co-Admin{8E8E8E}::::.....................................");
-		    SendClientMessage(playerid, -1, "{8E8E8E}/DarDinero [ID] [Monto] - /Clima [ID_Clima] - /SetSkin [ID] [ID_Skin] - /Weapon [ID_Weapon]");
+		    SendClientMessage(playerid, -1, "{8E8E8E}/DarDinero [ID] [Monto] - /Clima [ID_Clima] - /SetSkin [ID_Skin] - /Weapon [ID_Weapon]");
             SendClientMessage(playerid, -1, "{9DFFFF}*Puedes cambiar el Clima. **Puedes Cambiar el Skin. ***Puedes Dar Armas.{FF0000}(NO ABUSAR)");
 		}
 		if(PlayersData[playerid][Admin] >= 6)
@@ -1926,7 +2127,7 @@ if(!sscanf(params, "ud", params[0], params[1]))
     GivePlayerMoney(params[0], params[1]);
 
     new string[180];
-    format(string, sizeof(string), "%sEl administrador %s [ID: %d] te ha dado {20A704}$%d{A7A7A7} dólares.", InfoMsg, RemoveUnderScore(playerid), playerid, params[1]);
+    format(string, sizeof(string), "%sEl administrador %s [ID: %d] te ha dado {20A704}$%d{A7A7A7} dólares.", AdminMsg, RemoveUnderScore(playerid), playerid, params[1]);
     SendClientMessage(params[0], -1, string);
 
     new string2[180];
@@ -1966,7 +2167,7 @@ if(PlayersData[playerid][Admin] >=4)
 	SetPlayerHealth(params[0], vida);
 	format(string, sizeof(string), "%sLe haz dado %d vida a %s .", AdminMsg, vida, RemoveUnderScore(params[0]));
  	SendClientMessage(playerid, -1, string);
- 	format(string, sizeof(string), "%sEl Administrador %s te ha dado %d de vida.", InfoMsg, RemoveUnderScore(playerid), vida);
+ 	format(string, sizeof(string), "%sEl Administrador %s te ha dado %d de vida.", AdminMsg, RemoveUnderScore(playerid), vida);
 	SendClientMessage(params[0], -1, string);
 }
 else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
@@ -2168,14 +2369,13 @@ CMD:setskin(playerid, params[])
 {
 if(PlayersData[playerid][Admin] >=5)
 {
-	new sk, string[126], id;
+	new sk, string[126];
 	if(sscanf(params, "u", sk))
-	    return SendClientMessageEx(playerid, -1, "%sUtiliza /SetSkin [ID] [ID_Skin]", AdminMsg);
-	id=params[0];
- 	sk=params[1];
-  	SetPlayerSkin(id, sk);
-  	PlayersData[id][Skin] = sk;
-    format(string, sizeof(string), "%sHaz cambiado el skin de %s al ID: %d", AdminMsg, RemoveUnderScore(id), sk);
+	    return SendClientMessageEx(playerid, -1, "%sUtiliza /SetSkin [ID_Skin]", AdminMsg);
+ 	sk=params[0];
+  	SetPlayerSkin(playerid, sk);
+  	PlayersData[playerid][Skin] = sk;
+    format(string, sizeof(string), "%sHaz cambiado tu skin al ID: %d", AdminMsg, sk);
     SendClientMessage(playerid,-1, string);
 }
 else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
@@ -2496,6 +2696,29 @@ CMD:hora(playerid, params[])
 	gettime(Hora, Minuto);
 	format(msg, sizeof(msg), "Hora: %d, Minutos %d", Hora, Minuto);
 	SendClientMessage(playerid, -1, msg);
+	return 1;
+}
+CMD:nuke(playerid,params[])
+{
+	if(PlayersData[playerid][Admin] >= 6)
+	{
+		new id, msg[100];
+		if(sscanf(params,"d",id))return SendClientMessageEx(playerid,-1,"%sUtiliza /Nuke [ID]", AdminMsg);
+		if(IsPlayerConnected(id))
+		{
+			new Float:x,Float:y,Float:z;
+			GetPlayerPos(id,x,y,z);
+			CreateExplosion(x, y, z, 10, 500.0);
+			SetPlayerPos(id, x, y, z+5);
+			format(msg, sizeof(msg), "%sHaz detonado a %s", AdminMsg, RemoveUnderScore(id));
+			SendClientMessage(playerid, -1, msg);
+			GameTextForPlayer(id, "~r~Bomba ~w~Nuclear", 5000, 3);
+		}
+	}
+	else
+	{
+		SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
+	}
 	return 1;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
