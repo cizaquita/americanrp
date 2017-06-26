@@ -12,7 +12,6 @@
 #include <YSI\y_ini>
 #include <YSI/y_iterate>
 #include <sscanf2>
-#include <a_mysql>
 /* ---===[- Macros & Demas -]===--- */
 #define Server_Logo      "{005EF6}» {FFFFFF}Bienvenido a la comunidad de {484EFA}American{FFFFFF} Role{FFFF00}Play!"
 #define Server_Version   "v1.1"
@@ -23,6 +22,11 @@
 #define Server_Map       "San Fierro"
 #define Server_Language  "Español / Spanish"
 #define Server_Password  ""
+/* ---===[- Chat -]===--- */
+#define	AdminMsg    "{A7A7A7}[Administración]: "
+#define InfoMsg     "{48A4FF}[Información]: "
+#define VIPMsg      "{FFFF80}[{FFFFFF}CHAT VIP{FFFF80}]: "
+#define InfMsg    "{FF9191}[Info]: "
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define MAX_PLAYER_VIDA                     (80)
 #define MAX_PLAYER_CHALECO                  (80)
@@ -53,17 +57,12 @@
 #define strcmpEx(%0,%1) 				strcmp(%0, %1, true) == 0
 #define CMD_LOG  true
 #define HOLDING(%0)
-//Conexión Mysql
-#define MySQL_Servidor "localhost"
-#define MySQL_Usuario "root"
-#define MySQL_BD "db"
-#define MySQL_Clave ""
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 new bool:Intentar[MAX_PLAYERS];
 new MotorAuto[MAX_VEHICLES];
 new bool:Spectador[MAX_PLAYERS];
 new Hora, Minuto;
-new Conecction;
+new AntiFloodZ[MAX_PLAYERS];
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /* ---===[- TEXTDRAWS -]===--- */
 new Text:Textdraw0;
@@ -94,38 +93,33 @@ new AdminsRangosColors[9] =
 /* ---===[- Variables & Arrays -]===--- */
 enum PlayerData
 {
-	Password[130],
-	Admin,
-	Vip,
-	Nivel,
-	Float:Vida,
-	Float:Chaleco,
-	Float:PosX,
-	Float:PosY
-	Float:PosZ,
-	Float:VW,
-	Dinero,
-	Sexo,
-	Skin,
-	AdminDuty,
-	Faccion,
-	Rango,
-	Interior,
-	Experiencia,
-	Ciudad,
-	Edad,
-	Baneado,
-	Warns,
-	Acento,
-	Estado
-}
-new PlayersData[MAX_PLAYERS][PlayerData],
-	PlayersDataOnline[MAX_PLAYERS][PlayersOnline],
-	bool:Logueado[MAX_PLAYERS],
-	KickReason[MAX_PLAYERS],
-	IntentosLoguear[MAX_PLAYERS]  = MAX_INTENTOS,
-	DIR_CUENTAS[MAX_GUARDADO]    = "/Usuarios/";
-
+	Admin, //1 - 7
+	Vip, //0 - No, 1 - Si
+	Password[MAX_TEXTOS_CORTOS], //Long - 30
+	Float:Pos[4], // X, Y, Z, VW
+	Float:Vida, //80 - Max
+	Float:Chaleco, //80 - Max
+	Nivel, //Inicial - 1
+	Experiencia, //Inicial - 0
+	ExperienciaRe, //Experiencia requerida Nivel+4
+	Faccion, //0 - 7 DESACTIVADO ACTUAL.
+	Rango, //1 - 6 DESACTIVADO ACTUAL.
+	Interior, //VW
+	Skin, //31-Mujer, 35-Hombre
+	Acento, //En Proceso.
+	Dinero, //Inicial - 1200
+	World, //0
+	Armas[13], //Proceso...
+	Municiones[13], //Proceso...
+	AdminOn, // 1-Activado , 0-Desactivado
+	Ciudad, //1-Los Santos[x], 2-San Fierro, 3-Las Venturas[x]
+	Sexo, //1-Mujer, 2-Hombre
+	Relacion[MAX_TEXTOS_LARGOS], //Casado con:_
+	Estado, //0-Soltero, 1-Casado
+	Edad, // >18, <80
+	Baneado, //0-No, 1-Sí
+	Warn //Inicial - 0
+};
 enum PlayersOnline
 {
 	Mundo,
@@ -133,6 +127,14 @@ enum PlayersOnline
 	Muerto,
 	MuertoEx
 };
+new PlayersData[MAX_PLAYERS][PlayerData],
+	PlayersDataOnline[MAX_PLAYERS][PlayersOnline],
+	bool:Logueado[MAX_PLAYERS],
+	KickReason[MAX_PLAYERS],
+//	Sonido[MAX_PLAYERS],
+	IntentosLoguear[MAX_PLAYERS]  = MAX_INTENTOS,
+	DIR_CUENTAS[MAX_GUARDADO]    = "/Usuarios/";
+
 new COLOR_MESSAGES[5] =
 {
     0x93A6FFFF,      // 0 - COLOR ERROR
@@ -330,94 +332,12 @@ forward EncenderMotor(playerid);
 forward ApagarMotor(playerid);
 forward IntentarTimer(playerid);
 forward PayDay(playerid);
-forward OnQueryError(errorid, error[], callback[], query[], connectionHandle);
-forward CheckPlayer(playerid);
-forward OnQueryFinish(resultid, extraid, ConnectionHandle);
+forward AntiFlood(playerid);
 
-public OnQueryFinish(resultid, extraid, ConnectionHandle)
-{
-    new Rows, Field, string[300];
-    if(resultid != 0)
+public AntiFlood(playerid)
     {
-        cache_get_data(Rows, Field);
+    	AntiFloodZ[playerid] = 0;
     }
-    switch(resultid)
-    {
-        case 1:
-        {
-            if(Rows == 1)
-            {
-                new content[20];
-                cache_get_field_content(0, "Password", PlayersData[extraid][pPassword]);
-                cache_get_field_content(0, "Nivel", content); PlayersData[extraid][Nivel] = strval(content);
-                cache_get_field_content(0, "Vida", content); PlayersData[extraid][Vida] = floatstr(content);
-                cache_get_field_content(0, "Chaleco", content); PlayersData[extraid][Chaleco] = floatstr(content);
-                cache_get_field_content(0, "PosX", content); PlayersData[extraid][PosX] = floatstr(content);
-                cache_get_field_content(0, "PosY", content); PlayersData[extraid][PosY] = floatstr(content);
-                cache_get_field_content(0, "PosZ", content); PlayersData[extraid][PosZ] = floatstr(content);
-                cache_get_field_content(0, "VW", content); PlayersData[extraid][VW] = floatstr(content);
-                cache_get_field_content(0, "Admin", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Vip", content); PlayersData[extraid][Vip] = strval(content);
-                cache_get_field_content(0, "Dinero", content); PlayersData[extraid][Dinero] = strval(content);
-                cache_get_field_content(0, "Sexo", content); PlayersData[extraid][Sexo] = strval(content);
-                cache_get_field_content(0, "Skin", content); PlayersData[extraid][Skin] = strval(content);
-                cache_get_field_content(0, "AdminDuty", content); PlayersData[extraid][AdminDuty] = strval(content);
-                cache_get_field_content(0, "Faccion", content); PlayersData[extraid][Faccion] = strval(content);
-                cache_get_field_content(0, "Rango", content); PlayersData[extraid][Rango] = strval(content);
-                cache_get_field_content(0, "Interior", content); PlayersData[extraid][Interior] = strval(content);
-                cache_get_field_content(0, "Experiencia", content); PlayersData[extraid][Experiencia] = strval(content);
-                cache_get_field_content(0, "Ciudad", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Edad", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Baneado", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Warns", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Acento", content); PlayersData[extraid][Admin] = strval(content);
-                cache_get_field_content(0, "Estado", content); PlayersData[extraid][Estado] = strval(content);
-                SetSpawnInfo(extraid,0,0, PlayersData[extraid][pPosx],PlayersData[extraid][pPosy],PlayersData[extraid][pPosz],0.0,0,0,0,0,0,0);
-                SetPlayerScore(extraid,  PlayersData[extraid][Nivel]);
-                SetPlayerArmour(extraid, PlayersData[extraid][Chaleco]);
-                SetPlayerHealth(extraid, PlayersData[extraid][Vida]);
-				GivePlayerMoney(extraid, PlayersData[extraid][Dinero]);
-            }
-            else if(!Rows)
-            {
-				//
-            }
-        }
-        case 2:
-        {
-            if(Rows == 1)
-            {
-                new pName[24]; GetPlayerName(extraid, pName, 24);
-                cache_get_field_content(0, "Password", PlayersData[extraid][Password]);
-                format(string, sizeof(string), "{FFFFFF}Bienvenido nuevamente %s\n\n{FFFFFF}Por favor ingrese su contraseña para ingresar en {484EFA}American{FFFFFF} Role{FFFF00}Play", pName);
-                ShowPlayerDialog(extraid, LOGIN, DIALOG_STYLE_PASSWORD,"Panel » {005EF6}Logueo",string,"Ingresar","Salir");
-            }
-            else if(!Rows)
-            {
-                new pName[24]; GetPlayerName(extraid, pName, 24);
-                format(string, sizeof(string), "{FFFFFF}Bienvenido %s a la comunidad de {484EFA}American{FFFFFF} Role{FFFF00}Play\n\n\t{FFFFFF}Por favor ingrese una contraseña y presione 'Continuar'", pName);
-                ShowPlayerDialog(extraid, REGISTRO, DIALOG_STYLE_PASSWORD,"Panel » {005EF6}Registro",string,"Registrarse","Salir");
-            }
-        }
-    }
-    return 1;
-}
-
-public CheckPlayer(playerid)
-{
-    new pName[24], Query[256];
-    GetPlayerName(playerid, pName, 24);
-    format(Query, sizeof(Query), "SELECT * FROM `usuarios` WHERE Nombre='%s'", pName);
-    mysql_function_query(Conecction, Query, true, "OnQueryFinish", "ii",2, playerid);
-    return 1;
-}
-
-public OnQueryError(errorid, error[], callback[], query[], connectionHandle )
-{
-  printf("[ERROR] ID: %d - Error: %s - Callback - %s - Query: %s", errorid, error, callback, query);
-	return 1;
-}
-
 public IntentarTimer(playerid)
 {
     if(IsPlayerConnected(playerid)) Intentar[playerid] = true;
@@ -553,7 +473,7 @@ public OnPlayerDeathEx(playerid)
 {
     if ( PlayersDataOnline[playerid][Muerto] == 1 )
     {
-        SendInfoMessage(playerid, 2, "0", "El hospital te ha costado $200");
+        SendInfoMessage(playerid, 2, 	"0", "El hospital te ha costado $200");
 		GivePlayerMoney(playerid, -100);
         SetPlayerHealth(playerid, MAX_PLAYER_VIDA);
         ResetPlayerWeaponsEx(playerid);
@@ -586,7 +506,6 @@ public OnPlayerConnect(playerid)
     gettime(Hora, Minuto);
     SetPlayerTime(playerid,Hora,Minuto);
     SetPlayerColor(playerid, 0x454545FF);
-    CheckPlayer(playerid);
     TextDrawShowForPlayer(playerid, Textdraw0);
     TextDrawShowForPlayer(playerid, Textdraw1);
     TextDrawShowForPlayer(playerid, Textdraw2);
@@ -642,7 +561,7 @@ public OnPlayerDisconnect(playerid, reason)
 {
 	YSI_Save_Account(playerid);
  	new text[180];
-  	format(text, 180, "{A7A7A7}[Administración]: %s se ha desconectado del Servidor.", RemoveUnderScore(playerid));
+  	format(text, 180, "%s %s se ha desconectado del Servidor.", AdminMsg, RemoveUnderScore(playerid));
     DetectorCercania(15.0, playerid, text, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
 	return 1;
 }
@@ -665,55 +584,61 @@ public OnPlayerUpdate(playerid)
 }
 public OnPlayerKeyStateChange(playerid, newkeys, oldkeys)
 {
-       new IDAuto = GetPlayerVehicleID(playerid);
-       if(newkeys == KEY_FIRE)
-       {
-        if(IsPlayerInAnyVehicle(playerid))
-            {
-            if(MotorAuto[IDAuto] == 0)
-            {
-          SetTimerEx("EncenderMotor", 500, false, "d", playerid);
-          GameTextForPlayer(playerid, "~w~Encendiendo...",2000,3);
-		  new string[128 + MAX_PLAYER_NAME];
-		  format(string, sizeof(string), "*%s inserta la llave en el switch y la gira levemente!", RemoveUnderScore(playerid));
-    	  DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
-         }
-			else
-         {
-          SetTimerEx("ApagarMotor", 500, false, "d", playerid);
-          GameTextForPlayer(playerid, "~w~Apagando...",1000,3);
-		  new string[128 + MAX_PLAYER_NAME];
-		  format(string, sizeof(string), "*%s gira la llave del switch!", RemoveUnderScore(playerid));
-    	  DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
-         }
-         }
- 		return 1;
-       }
-       return 1;
+	new IDAuto = GetPlayerVehicleID(playerid);
+	if(newkeys == KEY_FIRE)
+	{
+		if(IsPlayerInAnyVehicle(playerid))
+		{
+		if(AntiFloodZ[playerid] == 1) return SendClientMessageEx(playerid, -1, "%sEspera 10 segundos", InfoMsg);
+		if(MotorAuto[IDAuto] == 0)
+		{
+			SetTimerEx("EncenderMotor", 500, false, "d", playerid);
+			GameTextForPlayer(playerid, "~w~Encendiendo...",2000,3);
+			new string[128 + MAX_PLAYER_NAME];
+			format(string, sizeof(string), "*%s inserta la llave en el switch y la gira levemente!", RemoveUnderScore(playerid));
+			DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
+		}
+		else
+		{
+			SetTimerEx("ApagarMotor", 500, false, "d", playerid);
+			GameTextForPlayer(playerid, "~w~Apagando...",1000,3);
+			new string[128 + MAX_PLAYER_NAME];
+			format(string, sizeof(string), "*%s gira la llave del switch!", RemoveUnderScore(playerid));
+			DetectorCercania(30.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
+		}
+		}
+		return 1;
+		}
+	return 1;
 }
 public EncenderMotor(playerid)
     {
-			new IDAuto = GetPlayerVehicleID(playerid);
-       		new enginem, lights, alarm, doors, bonnet, boot, objective;
-       		GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
-       		SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_ON, lights, alarm, doors, bonnet, boot, objective);
-       		GameTextForPlayer(playerid, "~w~Motor ~g~Encendido",1000,3);
-       		MotorAuto[IDAuto] = 1;
-    		new string[128 + MAX_PLAYER_NAME];
-    		format(string, sizeof(string), "**Vehículo encendido [ID:%d]", playerid);
-    		DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+            new IDAuto = GetPlayerVehicleID(playerid);
+            new enginem, lights, alarm, doors, bonnet, boot, objective;
+            GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
+            SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_ON, lights, alarm, doors, bonnet, boot, objective);
+            GameTextForPlayer(playerid, "~w~Motor ~g~Encendido",1000,3);
+            MotorAuto[IDAuto] = 1;
+            new string[128 + MAX_PLAYER_NAME];
+            format(string, sizeof(string), "**Vehículo encendido [ID:%d]", playerid);
+            DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+            AntiFloodZ[playerid] = 1;
+            SetTimerEx("AntiFlood", 10000, false, "d", playerid);
     }
 public ApagarMotor(playerid)
     {
         new IDAuto = GetPlayerVehicleID(playerid);
-    	new enginem, lights, alarm, doors, bonnet, boot, objective;
-       	GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
-       	SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_OFF, lights, alarm, doors, bonnet, boot, objective);
-       	GameTextForPlayer(playerid, "~w~Motor ~r~Apagado",1000,3);
-       	MotorAuto[IDAuto] = 0;
-		new string[128 + MAX_PLAYER_NAME];
- 		format(string, sizeof(string), "**Vehículo apagado [ID:%d]", playerid);
-		DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+        new enginem, lights, alarm, doors, bonnet, boot, objective;
+        GetVehicleParamsEx(GetPlayerVehicleID(playerid),enginem, lights, alarm, doors, bonnet, boot, objective);
+        SetVehicleParamsEx(GetPlayerVehicleID(playerid),VEHICLE_PARAMS_OFF, lights, alarm, doors, bonnet, boot, objective);
+        GameTextForPlayer(playerid, "~w~Motor ~r~Apagado",1000,3);
+        MotorAuto[IDAuto] = 0;
+        new string[128 + MAX_PLAYER_NAME];
+        format(string, sizeof(string), "**Vehículo apagado [ID:%d]", playerid);
+        DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
+        AntiFloodZ[playerid] = 1;
+        SetTimerEx("AntiFlood", 10000, false, "d", playerid);
+    	DetectorCercania(30.0, playerid, string, 0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF,0xFFFF00FF);
     }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1093,20 +1018,6 @@ public OnDialogResponse(playerid, dialogid, response, listitem, inputtext[])
 }
 public OnGameModeInit()
 {
-	//Conexión MYSQL
-	printf("Iniciando conexión MySQL: (Servidor: '%s', Usuario: '%s', Clave: '%s', Base de Datos: '%s')", MySQL_Servidor, MySQL_Usuario, MySQL_Clave, MySQL_BD);
-    Conecction = mysql_connect(MySQL_Servidor, MySQL_Usuario, MySQL_BD,MySQL_Clave);
- 	if(mysql_ping() == 1)
-	{
-		printf("Conexión a la base de datos realizada correctamente.");
-	}
-	else
-	{
-	    print("Conexión a la base de datos no realizada.");
-		mysql_close();
-		SendRconCommand("exit");
-	}
-	//
 	SetGameModeText(Server_GameText);
 	new rcon[80];
 	format(rcon, sizeof(rcon), "hostname %s", Server_Nombre);
@@ -1275,17 +1186,22 @@ public PayDay(playerid)
     {
         if (IsPlayerConnected(i) && Logueado[i])
         {
-            new msg[100], exp, lvl, expr;
+            new msg[100], exp, lvl, expr, string[200], p, cd, d;
             expr= (PlayersData[i][ExperienciaRe]);
             exp= (PlayersData[i][Experiencia]);
             lvl= (PlayersData[i][Nivel]);
-            GivePlayerMoney(i, 250);
-            GivePlayerMoney(i, -10);
-            SendClientMessage(i, -1, "{A7A7A7}======================{FF0000}PAGO DIARIO{A7A7A7}======================\n");
-            SendClientMessage(i, -1, "{00FF2B}+250 {FFFFFF}por servicio laboral");
-            SendClientMessage(i, -1, "{FF0004}-10  {FFFFFF}pagos al gobierno iva etc.");
-            SendClientMessage(i, -1, "{00FF2B}Otro Mensaje xd");
-            SendClientMessage(i, -1, "{A7A7A7}=======================================================");
+            p=250;
+            d=PlayersData[i][Dinero]-10;
+            GivePlayerMoney(i, p-10);
+			cd=(PlayersData[i][Dinero]-p);
+            SendClientMessage(i, -1, "{FBDA8E}|___________________ {008000}Banco{FBDA8E} ___________________|\n");
+            format(string, sizeof(string), "{BDF766}Banco: Nuevo Balance: $%d", d);
+            SendClientMessage(i, -1, string);
+            format(string, sizeof(string), "{BDF766}Banco: Antiguo Balance: $%d", cd);
+            SendClientMessage(i, -1, string);
+            format(string, sizeof(string), "{BDF766}Banco: Intereses: $10");
+            SendClientMessage(i, -1, string);
+            SendClientMessage(i, -1, "{FBDA8E}|_____________________ {008000}Fin{FBDA8E} ____________________|");
     		format(msg, sizeof(msg), "~B~Hora de la Paga!");
 			GameTextForPlayer(i, msg, 1000, 1);
             PlayersData[i][Experiencia]++;
@@ -1451,7 +1367,7 @@ public OnPlayerClickMap(playerid, Float:fX, Float:fY, Float:fZ)
 	if(PlayersData[playerid][Admin] >= 3)
     {
 	    SetPlayerPos(playerid, fX, fY, fZ);
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Se te ha transportado hasta el punto en el mapa.");
+		SendClientMessageEx(playerid, -1, "%sSe te ha transportado hasta el punto en el mapa.", AdminMsg);
     }
 	return 1;
 }
@@ -1463,7 +1379,7 @@ public OnPlayerClickPlayer(playerid, clickedplayerid, source)
     	new Float:pX, Float:pY, Float:pZ, Mensaje[120];
     	GetPlayerPos(clickedplayerid, pX, pY, pZ);
     	SetPlayerPos(playerid, pX, pY, pZ);
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: Has ido a la posición de %s", RemoveUnderScore(clickedplayerid));
+    	format(Mensaje, sizeof(Mensaje), "%sHas ido a la posición de %s", AdminMsg, RemoveUnderScore(clickedplayerid));
     	SendClientMessage(playerid, -1, Mensaje);
 	}
 	return 1;
@@ -1491,7 +1407,7 @@ CMD:entorno(playerid, params[])
 }
 CMD:me(playerid, params[])//COMANDO /Me
 {
-    if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /me <acción>");
+    if(isnull(params)) return SendClientMessageEx(playerid, -1, "%sUtiliza /me <acción>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "*%s %s", RemoveUnderScore(playerid), params);
     DetectorCercania(15.0, playerid, string, 0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA,0xC2A2DAAA);
@@ -1499,7 +1415,7 @@ CMD:me(playerid, params[])//COMANDO /Me
 }
 CMD:susurrar(playerid, params[])//COMANDO /Susurrar
 {
-    if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /Susurrar <texto>");
+    if(isnull(params)) return SendClientMessageEx(playerid, -1, "%sUtiliza /Susurrar <texto>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "%s susurra: %s", RemoveUnderScore(playerid), params);
     DetectorCercania(3.0, playerid, string, 0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF,0xBB00BBFF);
@@ -1507,7 +1423,7 @@ CMD:susurrar(playerid, params[])//COMANDO /Susurrar
 }
 CMD:do(playerid, params[])//COMANDO /Ame
 {
-    if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /ame <entorno>");
+    if(isnull(params)) return SendClientMessageEx(playerid, -1, "%sUtiliza /ame <entorno>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "**%s [ID:%d]", params, playerid);
     DetectorCercania(15.0, playerid, string, 0x55FF80FF,0x84FFA3FF,0x84FFA3FF,0x84FFA3FF,0x84FFA3FF);
@@ -1516,7 +1432,7 @@ CMD:do(playerid, params[])//COMANDO /Ame
 CMD:intentar(playerid, params[])//COMANDO /Intentar
 {
     if(Intentar[playerid] == false) return SendClientMessage(playerid, -1, "{A7A7A7}** Debes esperar 10 segundos para volver a utilizar el comando.");
-    if(isnull(params)) return SendClientMessage(playerid, 1, "{FF4D53}[Administración]: Utiliza /intentar <texto>");
+    if(isnull(params)) return SendClientMessageEx(playerid, 1, "%sUtiliza /intentar <texto>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     new rand = random(100);
     if(rand < 50)
@@ -1535,7 +1451,7 @@ CMD:intentar(playerid, params[])//COMANDO /Intentar
 }
 CMD:g(playerid, params[])//COMANDO /Gritar
 {
-    if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /Gritar <Grito>");
+    if(isnull(params)) return SendClientMessageEx(playerid, -1, "%sUtiliza /Gritar <Grito>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "%s grita: %s!!!", RemoveUnderScore(playerid), params);
     DetectorCercania(20.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
@@ -1543,7 +1459,7 @@ CMD:g(playerid, params[])//COMANDO /Gritar
 }
 CMD:b(playerid, params[])//COMANDO /B
 {
-    if(isnull(params)) return SendClientMessage(playerid, -1, "{FF4D53}[Administración]: Utiliza /B <texto>");
+    if(isnull(params)) return SendClientMessageEx(playerid, -1, "%sUtiliza /B <texto>", InfMsg);
     new string[128 + MAX_PLAYER_NAME];
     format(string, sizeof(string), "[OOC]%s: (( %s ))", RemoveUnderScore(playerid), params);
     DetectorCercania(10.0, playerid, string, 0xE6E6E6E6,0xC8C8C8C8,0xAAAAAAAA,0x8C8C8C8C,0x6E6E6E6E);
@@ -1553,12 +1469,12 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
 {
 	if (isnull(params))
  	{
-  		SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Pasaporte [ID]");
+  		SendClientMessageEx(playerid, 0, "0", "%sUtiliza /Pasaporte [ID]", InfMsg);
     	return 1;
 	}
 	new pID, string[300], ciudad[15], sexo[10], edad, trabajo[50], cargo[25], relacion[30];
 	pID=strval(params);
-	if(!IsPlayerConnected(pID)) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Jugador no conectado.");
+	if(!IsPlayerConnected(pID)) return SendClientMessageEx(playerid, -1, "%sJugador no conectado.", InfMsg);
     if(ProxDetectorS(5.0, playerid, pID) || playerid == pID)
     {
 	if(PlayersData[playerid][Ciudad] == 1) { ciudad="Los Santos";}
@@ -1621,20 +1537,20 @@ CMD:pasaporte(playerid, params[])//COMANDO /Pasaporte
     {
 		format(string, sizeof(string), "{FF8040}Nombre: {FFFFFF}%s\n{FF8040}Sexo: {FFFFFF}%s\n{FF8040}Edad: {FFFFFF}%d\n{FF8040}Residencia: {FFFFFF}%s\n{FF8040}Trabajo: {FFFFFF}%s\n{FF8040}Cargo: {FFFFFF}%s\n{FF8040}Relación: {FFFFFF}%s", RemoveUnderScore(playerid), sexo, edad, ciudad, trabajo, cargo, relacion);
 		ShowPlayerDialog(pID, DIALOG_PASAPORTE, DIALOG_STYLE_MSGBOX, "\t{C0C0C0}....::{0080FF}San {FF0000}Andreas {FF8000}Passport{C0C0C0}::....", string, "Aceptar","");
-		SendClientMessage(playerid, -1, "{48A4FF}[Información]: Haz revisado tu pasaporte");
+		SendClientMessageEx(playerid, -1, "%sHaz revisado tu pasaporte", InfoMsg);
 	}
 	else
 	{
 	format(string, sizeof(string), "{FF8040}Nombre: {FFFFFF}%s\n{FF8040}Sexo: {FFFFFF}%s\n{FF8040}Edad: {FFFFFF}%d\n{FF8040}Residencia: {FFFFFF}%s\n{FF8040}Trabajo: {FFFFFF}%s\n{FF8040}Cargo: {FFFFFF}%s\n{FF8040}Relación: {FFFFFF}%s", RemoveUnderScore(playerid), sexo, edad, ciudad, trabajo, cargo, relacion);
 	ShowPlayerDialog(pID, DIALOG_PASAPORTE, DIALOG_STYLE_MSGBOX, "\t{C0C0C0}....::{0080FF}San {FF0000}Andreas {FF8000}Passport{C0C0C0}::....", string, "Aceptar","");
-	SendClientMessageEx(pID, -1, "{48A4FF}[Información]: %s te ha enseñado su pasaporte", RemoveUnderScore(playerid));
-	SendClientMessageEx(playerid, -1, "{48A4FF}[Información]: Le haz enseñado tu pasaporte a %s", RemoveUnderScore(pID));
+	SendClientMessageEx(pID, -1, "%s%s te ha enseñado su pasaporte", InfoMsg, RemoveUnderScore(playerid));
+	SendClientMessageEx(playerid, -1, "%sLe haz enseñado tu pasaporte a %s", InfoMsg, RemoveUnderScore(pID));
 	}
 	return 1;
     }
 	else
 	{
-	SendClientMessageEx(playerid, -1, "{A7A7A7}[Administración]: El jugador se encuentra muy lejos.");
+	SendClientMessageEx(playerid, -1, "%sEl jugador se encuentra muy lejos.", InfMsg);
 	}
 	return 1;
 }
@@ -1644,7 +1560,7 @@ CMD:vc(playerid, params[])//COMANDO /VC
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /vc [Texto]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /vc [Texto]", VIPMsg);
             return 1;
 		}
 	    new VIPRank[64];
@@ -1652,17 +1568,17 @@ CMD:vc(playerid, params[])//COMANDO /VC
 		else if(PlayersData[playerid][Vip] == 2) { VIPRank = "{FF8080}Admin{E6C71A}VIP"; }
 	    if (strlen(params) > 125)
 		{
-	        SendClientMessageX(-1, "{FFFF80}[{FFFFFF}CHAT VIP{FFFF80}]: %s  {FFFFFF}%s{FFFF80}: %.64s", VIPRank, RemoveUnderScore(playerid), params);
+	        SendClientMessageX(-1, "%s%s  {FFFFFF}%s{FFFF80}: %.64s", VIPMsg, VIPRank, RemoveUnderScore(playerid), params);
 	        SendClientMessageX(-1, "...%s", params[64]);
 	    }
 	    else
 		{
-	        SendClientMessageX(-1, "{FFFF80}[{FFFFFF}CHAT VIP{FFFF80}]: %s  {FFFFFF}%s{FFFF80}: %s", VIPRank, RemoveUnderScore(playerid), params);
+	        SendClientMessageX(-1, "%s%s  {FFFFFF}%s{FFFF80}: %s", VIPMsg, VIPRank, RemoveUnderScore(playerid), params);
 		}
 	}
 	else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: Debes ser miembro VIP para disfrutar de estas caracteristicas.");
+	    SendClientMessageEx(playerid, -1,"%sDebes ser miembro VIP para disfrutar de estas caracteristicas.", VIPMsg);
 	}
 	return 1;
 }
@@ -1736,7 +1652,7 @@ CMD:duda(playerid, params[])
 	new msg[300];
 	if (isnull(params))
 	{
-  		SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Duda [Texto]");
+  		SendClientMessageEx(playerid, -1, "%sUtiliza /Duda [Texto]", AdminMsg);
     	return 1;
 	}
 	for(new i; i < MAX_PLAYERS; i++)
@@ -1750,12 +1666,12 @@ CMD:duda(playerid, params[])
 			}
 		}
 	}
-	SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Haz enviado una duda a la administración, espera que te respondan.");
+	SendClientMessageEx(playerid, -1, "%sHaz enviado una duda a la administración, espera que te respondan.", InfoMsg);
 	return 1;
 }
 CMD:reportar(playerid, params[])
 {
-    if(sscanf(params, "us[128]", params[0], params[1])) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Reportar [ID] [Razón]");
+    if(sscanf(params, "us[128]", params[0], params[1])) return SendClientMessageEx(playerid, -1, "%sUtiliza /Reportar [ID] [Razón]", AdminMsg);
     new nombre[MAX_PLAYER_NAME], nombre2[MAX_PLAYER_NAME], string[250];
     GetPlayerName(playerid, nombre, sizeof(nombre));
     GetPlayerName(params[0], nombre2, sizeof(nombre2));
@@ -1770,7 +1686,7 @@ CMD:reportar(playerid, params[])
             }
         }
     }
-    SendClientMessage(playerid, -1, "{48A4FF}[Información]: Tú reporte ha sido enviado, gracias por reportar!");
+    SendClientMessageEx(playerid, -1, "%sTú reporte ha sido enviado, gracias por reportar!", InfoMsg);
     return 1;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1807,7 +1723,7 @@ CMD:cmdstaff(playerid, params[])//COMANDO /CmdStaff
 		if(PlayersData[playerid][Admin] >= 5)
 		{
 		    SendClientMessage(playerid, -1, "{8E8E8E}.....................................::::{FF0000}Co-Admin{8E8E8E}::::.....................................");
-		    SendClientMessage(playerid, -1, "{8E8E8E}/DarDinero [ID] [Monto] - /Clima [ID_Clima] - /SetSkin [ID_Skin] - /Weapon [ID_Weapon]");
+		    SendClientMessage(playerid, -1, "{8E8E8E}/DarDinero [ID] [Monto] - /Clima [ID_Clima] - /SetSkin [ID] [ID_Skin] - /Weapon [ID_Weapon]");
             SendClientMessage(playerid, -1, "{9DFFFF}*Puedes cambiar el Clima. **Puedes Cambiar el Skin. ***Puedes Dar Armas.{FF0000}(NO ABUSAR)");
 		}
 		if(PlayersData[playerid][Admin] >= 6)
@@ -1825,7 +1741,7 @@ CMD:cmdstaff(playerid, params[])//COMANDO /CmdStaff
 	}
 	else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: No autorizado.");
+	    SendClientMessageEx(playerid, -1, "%sNo autorizado.", AdminMsg);
 	}
 	return 1;
 }
@@ -1835,7 +1751,7 @@ CMD:a(playerid, params[])
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /A [Texto]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /A [Texto]", AdminMsg);
             return 1;
 		}
 	    new AdminRank[64];
@@ -1859,7 +1775,7 @@ CMD:a(playerid, params[])
 	}
 	else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: No tienes acceso al chat administrativo, utiliza /w [ID].");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso al chat administrativo, utiliza /w [ID].", AdminMsg);
 	}
 	return 1;
 }
@@ -1869,22 +1785,22 @@ CMD:traer(playerid,params[])
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Traer [ID]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /Traer [ID]", AdminMsg);
             return 1;
 		}
     	new pID, Float:pX, Float:pY, Float:pZ, Mensaje[120];
     	pID = strval(params);
-    	if(!IsPlayerConnected(pID)) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Jugador no conectado.");
+    	if(!IsPlayerConnected(pID)) return SendClientMessageEx(playerid, -1, "%sJugador no conectado.", AdminMsg);
     	GetPlayerPos(playerid, pX, pY, pZ);
     	SetPlayerPos(pID, pX+2, pY, pZ);
     	SetPlayerInterior(pID, GetPlayerInterior(playerid));
     	SetPlayerVirtualWorld(pID, GetPlayerVirtualWorld(playerid));
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: Has traído a tu posición a %s.", RemoveUnderScore(pID));
+    	format(Mensaje, sizeof(Mensaje), "%sHas traído a tu posición a %s.", AdminMsg, RemoveUnderScore(pID));
     	SendClientMessage(playerid, -1, Mensaje);
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: %s te ha llevado a su posición.", RemoveUnderScore(playerid));
+    	format(Mensaje, sizeof(Mensaje), "%s%s te ha llevado a su posición.", AdminMsg, RemoveUnderScore(playerid));
     	SendClientMessage(pID, -1, Mensaje);
 	 }
-	 else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	 else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
     return 1;
 }
 CMD:ir(playerid,params[])
@@ -1893,22 +1809,22 @@ CMD:ir(playerid,params[])
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Ir [ID]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /Ir [ID]", AdminMsg);
             return 1;
 		}
     	new pID, Float:pX, Float:pY, Float:pZ, Mensaje[120];
     	pID = strval(params);
-    	if(!IsPlayerConnected(pID)) return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El jugador no se encuentra conectado.");
+    	if(!IsPlayerConnected(pID)) return SendClientMessageEx(playerid, -1, "%sEl jugador no se encuentra conectado.", AdminMsg);
     	GetPlayerPos(pID, pX, pY, pZ);
     	SetPlayerPos(playerid, pX+2, pY, pZ);
     	SetPlayerInterior(playerid, GetPlayerInterior(pID));
     	SetPlayerVirtualWorld(playerid, GetPlayerVirtualWorld(pID));
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: Has ido a la posición de %s.", RemoveUnderScore(pID));
+    	format(Mensaje, sizeof(Mensaje), "%sHas ido a la posición de %s.", AdminMsg, RemoveUnderScore(pID));
     	SendClientMessage(playerid, -1, Mensaje);
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: %s se a teletransportado a tu posición", RemoveUnderScore(playerid));
+    	format(Mensaje, sizeof(Mensaje), "%s%s se a teletransportado a tu posición", AdminMsg, RemoveUnderScore(playerid));
     	SendClientMessage(pID, -1, Mensaje);
 	 }
-	 else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	 else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
     return 1;
 }
 CMD:reiniciarservidor(playerid, params[])
@@ -1916,7 +1832,7 @@ CMD:reiniciarservidor(playerid, params[])
     new str[226];
     if(PlayersData[playerid][Admin] >= 6)
     {
-    format(str, sizeof(str), "{A7A7A7}[Administración]: El servidor se reiniciará en 1 minuto. By: %s.", RemoveUnderScore(playerid));
+    format(str, sizeof(str), "%sEl servidor se reiniciará en 1 minuto. By: %s.", AdminMsg, RemoveUnderScore(playerid));
     SendClientMessageToAll(-1, str);
 	GameTextForAll( "~W~El servidor se reiniciara~N~ ~R~1 minuto", 3000, 0);
     SetTimer("Reiniciar", 60000, false);
@@ -1924,7 +1840,7 @@ CMD:reiniciarservidor(playerid, params[])
     }
     else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
      	SetTimerEx("KickPlayer",200,false,"i",playerid);
 	}
     return 1;
@@ -1934,7 +1850,7 @@ CMD:forzarreinicio(playerid, params[])
     new str[226];
     if(PlayersData[playerid][Admin] >= 6)
     {
-    format(str, sizeof(str), "{A7A7A7}[Administración]: Se forzó el reinicio. By: %s.", RemoveUnderScore(playerid));
+    format(str, sizeof(str), "%sSe forzó el reinicio. By: %s.", AdminMsg, RemoveUnderScore(playerid));
 	GameTextForAll( "~R~Reiniciando Servidor", 6000, 0);
     SendClientMessageToAll(-1, str);
     SetTimer("Reiniciar", 100, false);
@@ -1942,7 +1858,7 @@ CMD:forzarreinicio(playerid, params[])
     }
     else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
      	SetTimerEx("KickPlayer",200,false,"i",playerid);
 	}
     return 1;
@@ -1968,7 +1884,7 @@ CMD:servidor(playerid, params[])
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Servidor [Texto]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /Servidor [Texto]", AdminMsg);
             return 1;
 		}
 		format(string, sizeof(string), "{FF0000}*{0080FF}Servidor: %s", params);
@@ -1976,7 +1892,7 @@ CMD:servidor(playerid, params[])
 	}
 	else
 	{
-	SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tiene acceso a este comando.");
+	SendClientMessageEx(playerid, -1, "%sNo tiene acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -1987,7 +1903,7 @@ CMD:o(playerid, params[])
     {
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /O [Texto General]");
+            SendClientMessageEx(playerid, -1, "%sUtiliza /O [Texto General]", AdminMsg);
             return 1;
 		}
     	format(str, sizeof(str), "{FFA214}[OOC][%d] %s: %s",playerid, RemoveUnderScore(playerid), params);
@@ -1995,7 +1911,7 @@ CMD:o(playerid, params[])
     }
     else
 	{
-	    SendInfoMessage(playerid, 0, "0", "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
     return 1;
 }
@@ -2010,18 +1926,18 @@ if(!sscanf(params, "ud", params[0], params[1]))
     GivePlayerMoney(params[0], params[1]);
 
     new string[180];
-    format(string, sizeof(string), "{A7A7A7}[Administración]: El administrador %s [ID: %d] te ha dado {20A704}$%d{A7A7A7} dólares.", RemoveUnderScore(playerid), playerid, params[1]);
+    format(string, sizeof(string), "%sEl administrador %s [ID: %d] te ha dado {20A704}$%d{A7A7A7} dólares.", InfoMsg, RemoveUnderScore(playerid), playerid, params[1]);
     SendClientMessage(params[0], -1, string);
 
     new string2[180];
-    format(string2, sizeof(string2), "{A7A7A7}[Administración]: Le diste {20A704}$%d{A7A7A7} dolares a %s [ID: %d]", params[1], RemoveUnderScore(params[0]), params[0]);
+    format(string2, sizeof(string2), "%sLe diste {20A704}$%d{A7A7A7} dolares a %s [ID: %d]", AdminMsg, params[1], RemoveUnderScore(params[0]), params[0]);
     SendClientMessage(playerid, -1, string2);
   }
-  else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El jugador no esta conectado.");
+  else SendClientMessageEx(playerid, -1, "%sEl jugador no esta conectado.", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /DarDinero [ID] [Monto]");
+else SendClientMessageEx(playerid, -1, "%sUtiliza /DarDinero [ID] [Monto]",AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");// Mensaje de la variable admin.
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:test(playerid, params[])
@@ -2030,13 +1946,13 @@ if(PlayersData[playerid][Admin] >= 2)
 {
 	new id, string[126], Float: PPos[3];
 	if(sscanf(params, "u", id))
-		return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Test [ID]");
+		return SendClientMessageEx(playerid, -1, "%sUtiliza /Test [ID]", AdminMsg);
 	GetPlayerPos(id, PPos[0], PPos[1], PPos[2]);
 	SetPlayerPos(id, PPos[0], PPos[1], PPos[2]+5);
-	format(string, sizeof(string), "{A7A7A7}[Administración]: Haz desbuggeado al usuario %s.", RemoveUnderScore(id));
+	format(string, sizeof(string), "%sHaz desbuggeado al usuario %s.", AdminMsg, RemoveUnderScore(id));
 	SendClientMessage(playerid, -1, string);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.",AdminMsg);
 return 1;
 }
 CMD:vida(playerid, params[])
@@ -2045,13 +1961,15 @@ if(PlayersData[playerid][Admin] >=4)
 {
 	new string[126], Float:vida;
 	if(sscanf(params, "ud", params[0], params[1]))
-	 	return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Vida [ID] [Cantidad]");
+	 	return SendClientMessageEx(playerid, -1, "%sUtiliza /Vida [ID] [Cantidad]", AdminMsg);
 	vida= params[1];
 	SetPlayerHealth(params[0], vida);
-	format(string, sizeof(string), "{A7A7A7}[Administración]: Le haz dado vida a %s .", RemoveUnderScore(params[0]));
+	format(string, sizeof(string), "%sLe haz dado %d vida a %s .", AdminMsg, vida, RemoveUnderScore(params[0]));
  	SendClientMessage(playerid, -1, string);
+ 	format(string, sizeof(string), "%sEl Administrador %s te ha dado %d de vida.", InfoMsg, RemoveUnderScore(playerid), vida);
+	SendClientMessage(params[0], -1, string);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:congelar(playerid, params[])
@@ -2060,12 +1978,12 @@ if(PlayersData[playerid][Admin] >=2)
 {
 	new id, string[126];
 	if(sscanf(params, "u", id))
-	    return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Congelar [ID]");
+	    return SendClientMessageEx(playerid, -1, "%sUtiliza /Congelar [ID]", AdminMsg);
     TogglePlayerControllable(id, 0);
-    format(string, sizeof(string), "{A7A7A7}[Administración]: %s te ha congelado.", RemoveUnderScore(playerid));
+    format(string, sizeof(string), "%s%s te ha congelado.", AdminMsg, RemoveUnderScore(playerid));
     SendClientMessage(id,-1, string);
 }
-else SendClientMessage(playerid, -1, "{FF5D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:descongelar(playerid, params[])
@@ -2074,12 +1992,12 @@ if(PlayersData[playerid][Admin] >=2)
 {
 	new id, string[126];
 	if(sscanf(params, "u", id))
-	    return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Descongelar [ID]");
+	    return SendClientMessageEx(playerid, -1, "%sUtiliza /Descongelar [ID]", AdminMsg);
     TogglePlayerControllable(id, 1);
-    format(string, sizeof(string), "{A7A7A7}[Administración]: %s te ha descongelado.", RemoveUnderScore(playerid));
+    format(string, sizeof(string), "%s%s te ha descongelado.", AdminMsg, RemoveUnderScore(playerid));
     SendClientMessage(id,-1, string);
 }
-else SendClientMessage(playerid, -1, "{FF5D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:staff(playerid, params[])
@@ -2101,17 +2019,17 @@ if(!sscanf(params, "ud", params[0], params[1]))
 	if (IDStaff == 5)   {   rango = "{FF0000}Co-Admin{A7A7A7}";}
 	if (IDStaff == 6)   {   rango = "{400000}Administrador{A7A7A7}";}
 	if (IDStaff == 7)   {   rango = "{3C3C3C}Scripter{A7A7A7}";}
-    format(string, sizeof(string), "{A7A7A7}[Administración]: El administrador %s [ID: %d] te ha asignado el rango %s de administrador.", RemoveUnderScore(playerid), playerid, rango);
+    format(string, sizeof(string), "%sEl administrador %s [ID: %d] te ha asignado el rango %s de administrador.", AdminMsg, RemoveUnderScore(playerid), playerid, rango);
     SendClientMessage(params[0], -1, string);
     new string2[180];
-    format(string2, sizeof(string2), "{A7A7A7}[Administración]: Le diste el rango administrativo %s a %s [id: %d]", rango, RemoveUnderScore(params[0]), params[0]);
+    format(string2, sizeof(string2), "%sLe diste el rango administrativo %s a %s [id: %d]", AdminMsg, rango, RemoveUnderScore(params[0]), params[0]);
     SendClientMessage(playerid, -1, string2);
   }
-  else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El jugador no esta conectado.");
+  else SendClientMessageEx(playerid, -1, "%sEl jugador no esta conectado.", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Staff [ID] [Rango]");
+else SendClientMessageEx(playerid, -1, "%sUtiliza /Staff [ID] [Rango]", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:kick(playerid, params[])
@@ -2123,18 +2041,18 @@ if(!sscanf(params, "ud", params[0]))
   if(IsPlayerConnected(params[0]))
   {
     new string[180];
-    format(string, sizeof(string), "{A7A7A7}[Administración]: El administrador %s [ID: %d] te kickeó del servidor.", RemoveUnderScore(playerid), playerid);
+    format(string, sizeof(string), "%sEl administrador %s [ID: %d] te kickeó del servidor.", AdminMsg, RemoveUnderScore(playerid), playerid);
     SendClientMessage(params[0], -1, string);
     new string2[180];
-    format(string2, sizeof(string2), "{A7A7A7}[Administración]: Haz kickeado a %s", RemoveUnderScore(params[0]));
+    format(string2, sizeof(string2), "%sHaz kickeado a %s", AdminMsg, RemoveUnderScore(params[0]));
     SendClientMessage(playerid, -1, string2);
     SetTimerEx("KickPlayer",400,false,"i",params[0]);
   }
-  else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El jugador no esta conectado.");
+  else SendClientMessageEx(playerid, -1, "%sEl jugador no esta conectado.", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Kick [ID]");
+else SendClientMessageEx(playerid, -1, "%sUtiliza /Kick [ID]", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 forward KickPlayer(playerid);
@@ -2152,20 +2070,20 @@ if(!sscanf(params, "ud", params[0]))
   if(IsPlayerConnected(params[0]))
   {
     new string[180];
-    format(string, sizeof(string), "{A7A7A7}[Administración]: El administrador %s te ha baneado del Servidor. {0080FF}Razón: %s.", RemoveUnderScore(playerid), params[1]);
+    format(string, sizeof(string), "%sEl administrador %s te ha baneado del Servidor. {0080FF}Razón: %s.", AdminMsg, RemoveUnderScore(playerid), params[1]);
     SendClientMessage(params[0], -1, string);
     new string2[180];
-    format(string2, sizeof(string2), "{A7A7A7}[Administración]: Haz baneado al usuario %s", RemoveUnderScore(params[0]));
+    format(string2, sizeof(string2), "%sHaz baneado al usuario %s", AdminMsg, RemoveUnderScore(params[0]));
     SendClientMessage(playerid, -1, string2);
-    SendClientMessage(params[0], -1, "{A7A7A7}[Administración]: {FFFF00}Se te recomienda tomar una Screenshot de este momento, así será válida tu apelación. Gracias por jugar!.");
+    SendClientMessageEx(params[0], -1, "%s{FFFF00}Se te recomienda tomar una Screenshot de este momento, así será válida tu apelación. Gracias por jugar!.", AdminMsg);
     PlayersData[(params[0])][Baneado] = 1;
     SetTimerEx("BanPlayer",300,false,"i",params[0]);
   }
-  else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El jugador no esta conectado.");
+  else SendClientMessageEx(playerid, -1, "%sEl jugador no esta conectado.", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Ban [ID] [Razón]");
+else SendClientMessageEx(playerid, -1, "%sUtiliza /Ban [ID] [Razón]", AdminMsg);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 forward BanPlayer(playerid);
@@ -2174,7 +2092,7 @@ public BanPlayer(playerid)
 Ban(playerid);
 return 1;
 }
-CMD:adminon(playerid, params[])
+CMD:adminduty(playerid, params[])
 {
 	new Float: PPos[3], Float:vida;
 	GetPlayerHealth(playerid, vida);
@@ -2183,7 +2101,7 @@ CMD:adminon(playerid, params[])
 	    if(PlayersData[playerid][AdminOn]==0)
 	    {
 	        PlayersData[playerid][AdminOn] = 1;
-	        SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Ahora estás OnDuty.");
+	        SendClientMessageEx(playerid, -1, "%sAhora estás OnDuty.", InfoMsg);
 	        SetPlayerHealth(playerid, 496700);
 	        SetPlayerColor(playerid, AdminsRangosColors[PlayersData[playerid][Admin]-1]);
 		}
@@ -2202,12 +2120,12 @@ CMD:adminon(playerid, params[])
 			SetPlayerHealth(playerid, vida);
 			GetPlayerPos(playerid, PPos[0], PPos[1], PPos[2]);
 			SetPlayerPos(playerid, PPos[0], PPos[1], PPos[2]+2);
-			SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Ya no estás OnDuty.");
+			SendClientMessageEx(playerid, -1, "%sYa no estás OnDuty.", InfoMsg);
 		}
 	}
 	else
 	{
-	SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2217,16 +2135,16 @@ CMD:clima(playerid,params[])
 	{
 	    if (isnull(params))
         {
-            SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /Clima [Valor]");
+            SendClientMessageEx(playerid, 0, "0", "%sUtiliza /Clima [Valor]", AdminMsg);
             return 1;
 		}
     	new cID, Mensaje[120];
     	cID= strval(params);
     	SetWeather(cID);
-    	format(Mensaje, sizeof(Mensaje), "{A7A7A7}[Administración]: Haz cambiado el clima al ID: %d", cID);
+    	format(Mensaje, sizeof(Mensaje), "%sHaz cambiado el clima al ID: %d", AdminMsg, cID);
     	SendClientMessage(playerid, -1, Mensaje);
 	 }
-	 else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+	 else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
     return 1;
 }
 CMD:ircoord(playerid, params[])
@@ -2235,7 +2153,7 @@ CMD:ircoord(playerid, params[])
 	{
 	    if(isnull(params))
 	    {
-	        SendInfoMessage(playerid, 0, "0", "{A7A7A7}[Administración]: Utiliza /IrCoord [x] [y] [z]");
+	        SendClientMessageEx(playerid, 1, "%sUtiliza /IrCoord [x] [y] [z]", AdminMsg);
 	        return 1;
 		}
 		new Float:pX, Float:pY, Float:pZ;
@@ -2250,16 +2168,17 @@ CMD:setskin(playerid, params[])
 {
 if(PlayersData[playerid][Admin] >=5)
 {
-	new sk, string[126];
+	new sk, string[126], id;
 	if(sscanf(params, "u", sk))
-	    return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /SetSkin [ID]");
- 	sk=strval(params);
-  	SetPlayerSkin(playerid, sk);
-  	PlayersData[playerid][Skin] = sk;
-    format(string, sizeof(string), "{A7A7A7}[Administración]: Haz cambiado tu skin al ID: %d", sk);
+	    return SendClientMessageEx(playerid, -1, "%sUtiliza /SetSkin [ID] [ID_Skin]", AdminMsg);
+	id=params[0];
+ 	sk=params[1];
+  	SetPlayerSkin(id, sk);
+  	PlayersData[id][Skin] = sk;
+    format(string, sizeof(string), "%sHaz cambiado el skin de %s al ID: %d", AdminMsg, RemoveUnderScore(id), sk);
     SendClientMessage(playerid,-1, string);
 }
-else SendClientMessage(playerid, -1, "{FF5D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:weapon(playerid, params[])
@@ -2268,13 +2187,13 @@ if(PlayersData[playerid][Admin] >=5)
 {
 	new a, string[126];
 	if(sscanf(params, "u", a))
-	    return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /weapon [ID_Arma]");
+	    return SendClientMessageEx(playerid, -1, "%sUtiliza /weapon [ID_Arma]", AdminMsg);
  	a=strval(params);
   	GivePlayerWeapon(playerid, a, 30);
-    format(string, sizeof(string), "{A7A7A7}[Administración]: Se te ha dado el arma ID: %d con 30 balas.", a);
+    format(string, sizeof(string), "%sSe te ha dado el arma ID: %d con 30 balas.", AdminMsg, a);
     SendClientMessage(playerid,-1, string);
 }
-else SendClientMessage(playerid, -1, "{FF5D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:dovip(playerid, params[])
@@ -2283,18 +2202,18 @@ if(PlayersData[playerid][Admin] >=6)
 {
 	new id, string[126], anuncio[500];
 	if(sscanf(params, "u", id))
-	 	return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /dovip [ID]");
+	 	return SendClientMessageEx(playerid, -1, "%sUtiliza /dovip [ID]", AdminMsg);
 	PlayersData[id][Vip] = 1;
 	SetPlayerColor(id, 0xF1D50EFF);
 	GivePlayerMoney(id, 5000);
-	format(string, sizeof(string), "{A7A7A7}[Administración]: Haz otorgado una suscripcion VIP a %s.", RemoveUnderScore(id));
+	format(string, sizeof(string), "%sHaz otorgado una suscripcion VIP a %s.", AdminMsg, RemoveUnderScore(id));
  	SendClientMessage(playerid, -1, string);
- 	format(string, sizeof(string), "{FFFF00}[Información]: El administador %s te ha otorgado una suscripción VIP!", RemoveUnderScore(playerid));
+ 	format(string, sizeof(string), "%sEl administador %s te ha otorgado una suscripción VIP!", VIPMsg, RemoveUnderScore(playerid));
 	SendClientMessage(id, -1, string);
 	format(anuncio,sizeof(anuncio),"{FF3E3E}Felicidades {FFFFFF}%s{FF3E3E}!\n\n{A8FFFF}Acabas de obtener tu Membresía {E6C71A}VIP{A8FFFF}!\n{A8FFFF}Esperamos que la disfrutes! Ahora puedes usar el {E6C71A}Chat VIP{A7A7A7}({FF00FF}/vc [texto]{A7A7A7})\n{FF2424}*Recuerda que la Administración puede Leer el Chat\n{FF2424}Cualquier rastro de MG será fuertemente sancionado.\n\n{0080FF}Más beneficios, vía foro!",RemoveUnderScore(id));
 	ShowPlayerDialog(id,DIALOG_VIP,DIALOG_STYLE_MSGBOX,"{FF8000}Suscripción {FFFFFF}» {E6C71A}VIP",anuncio,"Aceptar","");
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:removevip(playerid, params[])
@@ -2303,15 +2222,15 @@ if(PlayersData[playerid][Admin] >=6)
 {
 	new id, string[126];
 	if(sscanf(params, "u", id))
-	 	return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /removevip [ID]");
+	 	return SendClientMessageEx(playerid, -1, "%sUtiliza /removevip [ID]", AdminMsg);
 	PlayersData[id][Vip] = 0;
 	SetPlayerColor(id, 0xFFFFFFFF);
-	format(string, sizeof(string), "{A7A7A7}[Administración]: Le haz removido la suscripción VIP a %s.", RemoveUnderScore(id));
+	format(string, sizeof(string), "%sLe haz removido la suscripción VIP a %s.", AdminMsg, RemoveUnderScore(id));
  	SendClientMessage(playerid, -1, string);
- 	format(string, sizeof(string), "{FFFF00}[Información]: El administador %s te quitó tu suscripción VIP!", RemoveUnderScore(playerid));
+ 	format(string, sizeof(string), "%sEl administador %s te quitó tu suscripción VIP!", VIPMsg, RemoveUnderScore(playerid));
 	SendClientMessage(id, -1, string);
 }
-else SendClientMessage(playerid, -1, "{FF4D53}[Administración]: No tienes acceso a este comando.");
+else SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 return 1;
 }
 CMD:clearchat(playerid, params[])
@@ -2323,7 +2242,7 @@ CMD:clearchat(playerid, params[])
         }
     else
     {
-        SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+        SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
     }
     return 1;
 }
@@ -2344,7 +2263,7 @@ CMD:spamear(playerid, params[])
 	}
 	else
 	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2354,11 +2273,11 @@ CMD:warn(playerid, params[])
 	{
 		new id, string[126];
 		if(sscanf(params, "u", id))
-	 		return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Warn [ID]");
+	 		return SendClientMessageEx(playerid, -1, "%sUtiliza /Warn [ID]", AdminMsg);
 		PlayersData[id][Warn]++;
-		format(string, sizeof(string), "{A7A7A7}[Administración]: Le haz dado un Warn al usuario %s [ID: %d].", RemoveUnderScore(playerid), playerid);
+		format(string, sizeof(string), "%sLe haz dado un Warn al usuario %s [ID: %d].", AdminMsg, RemoveUnderScore(playerid), playerid);
 		SendClientMessage(playerid, -1, string);
-		format(string, sizeof(string), "{A7A7A7}[Administración]: El Administrador %s [ID: %d] te ha dado un warn!", RemoveUnderScore(playerid), id);
+		format(string, sizeof(string), "%sEl Administrador %s [ID: %d] te ha dado un warn!", AdminMsg, RemoveUnderScore(playerid), id);
 		SendClientMessage(id, -1, string);
 	}
 	return 1;
@@ -2369,16 +2288,16 @@ CMD:spawn(playerid, params[])
 	{
 	    new id, msg[120];
 	    if(sscanf(params, "u", id))
-	        return SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Spawn [ID]");
+	        return SendClientMessageEx(playerid, -1, "%sUtiliza /Spawn [ID]", AdminMsg);
 		SetPlayerPos(id, -2050.9604,462.0917,35.1719);
-		format(msg,sizeof(msg), "{A7A7A7}[Administración]: El administrador %s te ha Spawneado.", RemoveUnderScore(playerid));
+		format(msg,sizeof(msg), "%sEl administrador %s te ha Spawneado.", AdminMsg, RemoveUnderScore(playerid));
 		SendClientMessage(id, -1, msg);
-		format(msg, sizeof(msg), "{A7A7A7}[Administración]: Haz Spawneado al usuario %s", RemoveUnderScore(id));
+		format(msg, sizeof(msg), "%sHaz Spawneado al usuario %s", AdminMsg, RemoveUnderScore(id));
 		SendClientMessage(playerid, -1, msg);
 	}
 	else
 	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+		SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2387,20 +2306,21 @@ CMD:mohamed(playerid,params[])
 	if(PlayersData[playerid][Admin] >= 6)
 	{
 		new id, msg[100];
-		if(sscanf(params,"d",id))return SendClientMessage(playerid,-1,"{A7A7A7}[Administración]: Utiliza /Mohamed [ID]");
+		if(sscanf(params,"d",id))return SendClientMessageEx(playerid,-1,"%sUtiliza /Mohamed [ID]", AdminMsg);
 		if(IsPlayerConnected(id))
 		{
 			new Float:x,Float:y,Float:z;
 			GetPlayerPos(id,x,y,z);
 			CreateExplosion(x, y, z, 7, 20.0);
 			SetPlayerPos(id, x, y, z+5);
-			format(msg, sizeof(msg), "{A7A7A7}[Administración]: Haz detonado a %s", RemoveUnderScore(id));
+			format(msg, sizeof(msg), "%sHaz detonado a %s", AdminMsg, RemoveUnderScore(id));
 			SendClientMessage(playerid, -1, msg);
+			GameTextForPlayer(id, "~r~Allahu ~w~Akbar", 5000, 3);
 		}
 	}
 	else
 	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+		SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2411,13 +2331,13 @@ CMD:spec(playerid,params[])
         if(Spectador[playerid] == false)
         {
             new id, msg[100];
-            if(sscanf(params,"d",id))return SendClientMessage(playerid,-1,"{A7A7A7}[Administración]: Utiliza /Spec [ID]");
+            if(sscanf(params,"d",id))return SendClientMessageEx(playerid,-1,"%sUtiliza /Spec [ID]", AdminMsg);
             if(IsPlayerConnected(id))
             {
                 Spectador[playerid] = true;
                 PlayerSpectatePlayer(playerid, id,SPECTATE_MODE_FIXED);
                 TogglePlayerSpectating(playerid, 1);
-                format(msg, sizeof(msg), "{A7A7A7}[Administración]: Estás especteando a %s.", RemoveUnderScore(id));
+                format(msg, sizeof(msg), "%sEstás especteando a %s.", AdminMsg, RemoveUnderScore(id));
                 SendClientMessage(playerid,-1, msg);
             }
 
@@ -2428,13 +2348,13 @@ CMD:spec(playerid,params[])
             Spectador[playerid] = false;
             TogglePlayerSpectating(playerid, 0);
             SetCameraBehindPlayer(playerid);
-            format(msg2, sizeof(msg2), "{A7A7A7}[Administración]: Haz dejado de Espectear a %s.", RemoveUnderScore(id));
+            format(msg2, sizeof(msg2), "%sHaz dejado de Espectear a %s.", AdminMsg, RemoveUnderScore(id));
             SendClientMessage(playerid,-1, msg2);
         }
     }
     else
 	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
     return 1;
 }
@@ -2444,7 +2364,7 @@ CMD:testping(playerid,params[])
 	{
 	    new string[120], a;
 	    a=1;
-	    format(string, sizeof(string), "{A7A7A7}[Administración]: {0080FF}El administrador {FFFFFF}%s{0080FF} ha realizado un LaggTest", RemoveUnderScore(playerid));
+	    format(string, sizeof(string), "%s{0080FF}El administrador {FFFFFF}%s{0080FF} ha realizado un LaggTest", AdminMsg, RemoveUnderScore(playerid));
 	    SendClientMessageToAll(-1,string);
 	    while(a<=10)
 	    {
@@ -2459,7 +2379,7 @@ CMD:testping(playerid,params[])
 	}
 	else
 	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2478,12 +2398,12 @@ CMD:id(playerid, params[])
 			}
 			else
 			{
-	    		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: El usuario no se encuentra conectado.");
+	    		SendClientMessageEx(playerid, -1, "%s El usuario no se encuentra conectado.", AdminMsg);
 			}
 	}
    	else
     {
-        SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+        SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2498,7 +2418,7 @@ CMD:msgex(playerid, params[])
  	}
  	else
  	{
- 	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+ 	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2510,17 +2430,17 @@ CMD:zstaff(playerid, params[])
 		if(PlayersData[playerid][AdminOn] == 1)
 		{
 	    	SetPlayerPos(playerid, 213.4441299, 1822.882080, 6.414062);
-	    	format(msg, sizeof(msg), "{A7A7A7}[Administración]: Bienvenido de nuevo {FFFFFF}%s{A7A7A7} a la {FF0000}Zona{0080FF}Staff{A7A7A7}.", RemoveUnderScore(playerid));
+	    	format(msg, sizeof(msg), "%sBienvenido de nuevo {FFFFFF}%s{A7A7A7} a la {FF0000}Zona{0080FF}Staff{A7A7A7}.", AdminMsg, RemoveUnderScore(playerid));
 	    	SendClientMessage(playerid, -1, msg);
 		}
 		else
 		{
-	    	SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Debes estár OnDuty para usar este comando.");
+	    	SendClientMessageEx(playerid, -1, "%sDebes estár OnDuty para usar este comando.", AdminMsg);
 		}
 	}
 	else
 	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+	    SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2531,14 +2451,14 @@ CMD:matar(playerid, params[])
 		new msg[150], pID;
 		pID= strval(params);
 		SetPlayerHealth(pID, 0);
-		format(msg, sizeof(msg), "{A7A7A7}[Administración]: Haz matado a %s", RemoveUnderScore(pID));
+		format(msg, sizeof(msg), "%sHaz matado a %s", AdminMsg, RemoveUnderScore(pID));
 		SendClientMessage(playerid, -1, msg);
-		format(msg, sizeof(msg), "{A7A7A7}[Administración]: El administrador %s te ha matado.", RemoveUnderScore(playerid));
+		format(msg, sizeof(msg), "%sEl administrador %s te ha matado.", AdminMsg, RemoveUnderScore(playerid));
 		SendClientMessage(pID, -1, msg);
 	}
 	else
 	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+		SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2559,13 +2479,13 @@ CMD:forzarpd(playerid, params[])
 	if(PlayersData[playerid][Admin] >= 6)
 	{
 		new msg[200];
-		format(msg, sizeof(msg), "{A7A7A7}[Administración]: Haz forzado el Payday.");
+		format(msg, sizeof(msg), "%sHaz forzado el Payday.", AdminMsg);
 		SendClientMessage(playerid, -1, msg);
 		PayDay(playerid);
 	}
 	else
 	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
+		SendClientMessageEx(playerid, -1, "%sNo tienes acceso a este comando.", AdminMsg);
 	}
 	return 1;
 }
@@ -2579,65 +2499,3 @@ CMD:hora(playerid, params[])
 	return 1;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-CMD:faccion(playerid, params[])
-{
-    new str[128], nFacc[50];
-    if(PlayersData[playerid][Admin] < 6)
-	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
-	}
-    if(sscanf(params,"ui",params[0],params[1]))
-	{
- 		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Facción [ID] [Facción ID]");
-	}
-    if(!IsPlayerConnected(params[0]))
-	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Usuario no conectado");
-	}
-	if(params[1] >7)
-	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Esa no es una ID de Facción válida.");
-	}
-    PlayersData[params[0]][Faccion] = params[1];
-    PlayersData[params[0]][Rango] = 1;
-	if(params[1] == 1){ nFacc=	"Gobierno";}
-	if(params[1] == 2){ nFacc=	"LSPD";}
-	if(params[1] == 3){ nFacc=	"SAMD";}
-	if(params[1] == 4){ nFacc=	"Taller LS";}
-	if(params[1] == 5){ nFacc=	"CNN";}
-	if(params[1] == 6){ nFacc=	"Mafia Rusa";}
-	if(params[1] == 7){ nFacc=	"SOA";}
-    format(str, sizeof(str), "{48A4FF}[Información]: El administrador %s te nombro líder de la facción %s",RemoveUnderScore(playerid), nFacc);
-    SendClientMessage(params[0], -1, str);
-    format(str, sizeof(str), "{48A4FF}[Información]: Nombraste líder de %s a %s", nFacc, RemoveUnderScore(params[0]));
-    SendClientMessage(playerid, -1, str);
-    return 1;
-}
-CMD:rango(playerid, params[])
-{
-    new str[128], rango[25], r;
-    if(PlayersData[playerid][Rango] >1)
-	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: No tienes acceso a este comando.");
-	}
-    if(sscanf(params,"ui",params[0],params[1]))
-	{
- 		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Utiliza /Rango [ID] [Rango ID]");
-	}
-    if(!IsPlayerConnected(params[0]))
-	{
-		SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Usuario no conectado");
-	}
-	if(params[1] >7)
-	{
-	    SendClientMessage(playerid, -1, "{A7A7A7}[Administración]: Esa no es una ID de Rango Válida.");
-	}
-	rango="Prueba";
-	r= (params[1]);
-    PlayersData[params[0]][Rango] = r;
-    format(str, sizeof(str), "{48A4FF}[Información]: El líder %s te asignó el rango %s",RemoveUnderScore(playerid), rango);
-    SendClientMessage(params[0], -1, str);
-    format(str, sizeof(str), "{48A4FF}[Información]: Asignaste el rango %s a %s", rango, RemoveUnderScore(params[0]));
-    SendClientMessage(playerid, -1, str);
-    return 1;
-}
